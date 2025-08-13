@@ -3,7 +3,7 @@
 # ----------------------------------------------------------------
 
 # --- 基础配置 ---
-baseURL: "https://chainlinn.github.io/" # 部署后请换成你的真实域名
+baseURL: "https://chainlinn.github.io" # 部署后请换成你的真实域名
 languageCode: "zh-cn" # 网站语言：简体中文
 title: "月亮湾" # 网站标题
 theme: "PaperMod"
@@ -17,7 +17,7 @@ outputs:
 caches:
   images:
     dir: :cacheDir/images
-    
+
 # --- 顶部菜单配置 ---
 menu:
   main:
