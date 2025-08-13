@@ -1,0 +1,118 @@
+# ----------------------------------------------------------------
+#               hugo-PaperMod 主题完整配置示例
+# ----------------------------------------------------------------
+
+# --- 基础配置 ---
+baseURL: "https://chainlinn.github.io/" # 部署后请换成你的真实域名
+languageCode: "zh-cn" # 网站语言：简体中文
+title: "月亮湾" # 网站标题
+theme: "PaperMod"
+
+# --- 输出配置 (为了让搜索和RSS正常工作) ---
+outputs:
+  home:
+    - HTML
+    - RSS
+    - JSON # 搜索功能必需
+caches:
+  images:
+    dir: :cacheDir/images
+    
+# --- 顶部菜单配置 ---
+menu:
+  main:
+    - identifier: archives
+      name: "归档"
+      url: "/archives/"
+      weight: 10
+    - identifier: search
+      name: "搜索"
+      url: "/search/"
+      weight: 20
+    - identifier: tags
+      name: "标签"
+      url: "/tags/"
+      weight: 30
+    # 你可以继续添加更多菜单项，比如 "关于"
+    # - identifier: about
+    #   name: "关于"
+    #   url: "/about/"
+    #   weight: 40
+
+# --- 主题参数配置 (这是 PaperMod 主题的核心) ---
+params:
+
+  # --- 网站信息 ---
+  author: "张满月"
+  description: "Android工程师"
+  defaultTheme: "auto" # 默认主题 (auto, light, dark)
+  env: "production" # 设置为 production 来启用 SEO 优化
+
+  # --- 个人简介模式 (Profile Mode) ---
+  profileMode:
+    enabled: true # 启用此模式
+    title: "张满月" # 显示在头像下方的名字
+    subtitle: "✨ 一名热爱探索与分享的开发者 ✨" # 简介
+    imageUrl: "/images/avatar.png" # 头像路径 (请将头像文件放在 static/images/avatar.png)
+    imageWidth: 150 # 头像宽度 (像素)
+    imageHeight: 150 # 头像高度 (像素)
+    buttons:
+      - name: "文章"
+        url: "/archives"
+      - name: "标签"
+        url: "/tags"
+      # 你可以添加更多按钮
+      # - name: "项目"
+      #   url: "/projects"
+
+  # --- 社交图标 ---
+  socialIcons:
+    - name: "github"
+      url: "https://github.com/chainlinn"
+    - name: "email"
+      url: "mailto:santuchuan23@gmail.com"
+
+  # --- 功能开关 ---
+  ShowReadingTime: true # 显示文章阅读时间
+  ShowShareButtons: true # 显示分享按钮
+  ShowPostNavLinks: true # 显示上一篇/下一篇文章导航
+  ShowBreadCrumbs: true # 显示面包屑导航
+  ShowCodeCopyButtons: true # 显示代码块复制按钮
+  ShowToc: true # 在文章中默认显示目录
+  TocOpen: false # 目录默认不展开
+
+  # --- SEO 和封面图配置 ---
+  cover:
+    hidden: true # 在文章列表中隐藏封面图
+    hiddenInList: true # 同上
+    hiddeninSingle: false # 在文章正文中显示封面图
+
+  # --- 编辑链接 (可选) ---
+  # 如果你的博客仓库是公开的，可以开启此功能，方便他人提建议
+  editPost:
+    URL: "https://github.com/chainlinn/chainlinn/content"
+    Text: "Suggest Changes"
+    appendFilePath: true
+
+  # --- 搜索优化 (Fuse.js) ---
+  fuseOpts:
+    isCaseSensitive: false
+    shouldSort: true
+    location: 0
+    distance: 1000
+    threshold: 0.4
+    minMatchCharLength: 0
+    keys: ["title", "permalink", "summary", "content"]
+
+# --- Markdown 渲染配置 ---
+markup:
+  goldmark:
+    renderer:
+      unsafe: true # 允许在 Markdown 中使用原始 HTML
+  highlight:
+    noClasses: false
+    # anchorLineNos: true
+    codeFences: true
+    guessSyntax: true
+    lineNos: true # 显示代码行号
+    style: "monokai" # 代码高亮主题，可选：dracula, github, anbuilt-in, etc.
