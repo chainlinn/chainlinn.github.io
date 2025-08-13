@@ -10,7 +10,7 @@ categories = ["文学鉴赏"]
 
 《滕王阁序》，全称为《秋日登洪府滕王阁饯别序》，是中国唐代诗人王勃的传世名篇。此文因“落霞与孤鹜齐飞，秋水共长天一色”一类的千古名句而脍炙人口，被誉为“千古第一骈文”。其辞藻华丽，对仗工整，意境壮阔，情感奔放，是古代文学宝库中的一颗璀璨明珠。
 
-![滕王阁日景](https://upload.wikimedia.org/wikipedia/commons/thumb/1/19/Tengwang_Pavilion_20180625_091515.jpg/1280px-Tengwang_Pavilion_20180625_091515.jpg)
+![元 夏永绘《滕王阁图》](https://zh.wikipedia.org/wiki/File:%E5%A4%8F%E6%B0%B8_%E6%BB%95%E7%8E%8B%E9%98%81%E5%9B%BE_%E6%95%A3%E9%A1%B5.jpg)
 *今日之滕王阁，依旧屹立于赣江之滨*
 
 ---
@@ -25,7 +25,7 @@ categories = ["文学鉴赏"]
 
 落霞与孤鹜齐飞，秋水共长天一色。渔舟唱晚，响穷彭蠡之滨；雁阵惊寒，声断衡阳之浦。
 
-![落霞与孤鹜齐飞，秋水共长天一色](https://upload.wikimedia.org/wikipedia/commons/thumb/1/16/Autumn_Water_and_Sky_as_One_Color.jpg/1920px-Autumn_Water_and_Sky_as_One_Color.jpg)
+![落霞与孤鹜齐飞，秋水共长天一色](http://5b0988e595225.cdn.sohucs.com/images/20200223/8e2d2e051b74485785620dd4494f384f.jpeg)
 *“落霞与孤鹜齐飞，秋水共长天一色”之意境图*
 
 遥襟甫畅，逸兴遄飞。爽籁发而清风生，纤歌凝而白云遏。睢园绿竹，气凌彭泽之樽；邺水朱华，光照临川之笔。四美具，二难并。穷睇眄于中天，极娱游于暇日。天高地迥，觉宇宙之无穷；兴尽悲来，识盈虚之有数。望长安于日下，目吴会于云间。地势极而南溟深，天柱高而北辰远。关山难越，谁悲失路之人；萍水相逢，尽是他乡之客。怀帝阍而不见，奉宣室以何年？
