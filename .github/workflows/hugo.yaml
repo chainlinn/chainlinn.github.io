@@ -1,63 +1,91 @@
-# Sample workflow for building and deploying a Hugo site to GitHub Pages
-name: Deploy chainlinn to Pages
+# .github/workflows/your-workflow-file.yml
+
+name: Deploy chainlinn to Pages with RSS Feed
 
 on:
-  # Runs on pushes targeting the default branch
   push:
     branches:
       - main
-
-  # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
+  # --- 修改这里 ---
+  # 定时触发，对应东八区时间 (UTC+8) 的早上 8:00, 中午 12:00, 傍晚 18:00
+  schedule:
+    - cron: '0 0,4,10 * * *'
 
-# Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
 permissions:
   contents: read
   pages: write
   id-token: write
 
-# Allow only one concurrent deployment, skipping runs queued between the run in-progress and latest queued.
-# However, do NOT cancel in-progress runs as we want to allow these production deployments to complete.
 concurrency:
   group: "pages"
   cancel-in-progress: false
 
-# Default to bash
 defaults:
   run:
-    # GitHub-hosted runners automatically enable `set -eo pipefail` for Bash shells.
     shell: bash
 
 jobs:
-  # Build job
   build:
     runs-on: ubuntu-latest
     env:
       DART_SASS_VERSION: 1.89.2
       HUGO_VERSION: 0.148.0
       HUGO_ENVIRONMENT: production
-      TZ: America/Los_Angeles
+      TZ: Asia/Shanghai
     steps:
+      # 步骤 1: 首先检出你的仓库代码！
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+
+      # 步骤 2: 安装 Hugo 和其他构建工具
       - name: Install Hugo CLI
         run: |
           wget -O ${{ runner.temp }}/hugo.deb https://github.com/gohugoio/hugo/releases/download/v${HUGO_VERSION}/hugo_extended_${HUGO_VERSION}_linux-amd64.deb
           sudo dpkg -i ${{ runner.temp }}/hugo.deb
+
       - name: Install Dart Sass
         run: |
           wget -O ${{ runner.temp }}/dart-sass.tar.gz https://github.com/sass/dart-sass/releases/download/${DART_SASS_VERSION}/dart-sass-${DART_SASS_VERSION}-linux-x64.tar.gz
           tar -xf ${{ runner.temp }}/dart-sass.tar.gz --directory ${{ runner.temp }}
           mv ${{ runner.temp }}/dart-sass/ /usr/local/bin
           echo "/usr/local/bin/dart-sass" >> $GITHUB_PATH
-      - name: Checkout
-        uses: actions/checkout@v4
+
+      # 步骤 3: 设置 Python 环境
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
-          submodules: recursive
-          fetch-depth: 0
+          python-version: '3.10'
+
+      # 步骤 4: 安装 Python 依赖 (带缓存)
+      - name: Cache and Install Python dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('rss/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+        id: cache-pip
+      - name: Install dependencies
+        run: pip install -r rss/requirements.txt
+      
+      # 步骤 5: 运行脚本抓取 RSS (现在它可以读取历史数据并写入新数据了)
+      - name: Fetch RSS Feeds
+        run: python rss/fetch_rss.py
+
+      # 步骤 6: 配置 GitHub Pages
       - name: Setup Pages
         id: pages
         uses: actions/configure-pages@v5
+
+      # 步骤 7: (可选) 安装 Node.js 依赖
       - name: Install Node.js dependencies
         run: "[[ -f package-lock.json || -f npm-shrinkwrap.json ]] && npm ci || true"
+
+      # 步骤 8: 缓存 Hugo 构建结果
       - name: Cache Restore
         id: cache-restore
         uses: actions/cache/restore@v4
@@ -67,8 +95,11 @@ jobs:
           key: hugo-${{ github.run_id }}
           restore-keys:
             hugo-
+
       - name: Configure Git
         run: git config core.quotepath false
+
+      # 步骤 9: 使用更新后的数据构建 Hugo 网站
       - name: Build with Hugo
         run: |
           hugo \
@@ -76,6 +107,7 @@ jobs:
             --minify \
             --baseURL "${{ steps.pages.outputs.base_url }}/" \
             --cacheDir "${{ runner.temp }}/hugo_cache"
+
       - name: Cache Save
         id: cache-save
         uses: actions/cache/save@v4
@@ -83,12 +115,14 @@ jobs:
           path: |
             ${{ runner.temp }}/hugo_cache
           key: ${{ steps.cache-restore.outputs.cache-primary-key }}
+
+      # 步骤 10: 上传构建产物
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
           path: ./public
 
-  # Deployment job
+  # deploy job 保持不变...
   deploy:
     environment:
       name: github-pages

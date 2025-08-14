@@ -1,0 +1,29 @@
+{{/*
+    这个布局文件继承了主题的基础模板，
+    确保我们的自定义页面和网站其他部分外观一致。
+  */}}
+  {{ define "main" }}
+  
+  <main class="main">
+      <header class="page-header">
+          {{- partial "breadcrumbs.html" . }}
+          <h1>{{ .Title }}</h1>
+          {{- if .Description }}
+          <div class="post-description">
+              {{ .Description }}
+          </div>
+          {{- end }}
+      </header>
+      
+      {{- if .Content }}
+      <div class="post-content">
+          {{ .Content }}
+      </div>
+      {{- end }}
+      
+      {{/* 关键！在这里调用我们的列表渲染组件 */}}
+      {{ partial "rss_layout.html" . }}
+  
+  </main>
+  
+  {{ end }}

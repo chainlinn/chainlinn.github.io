@@ -1,0 +1,29 @@
+{{/*
+    这个局部模板负责渲染朋友圈列表。
+    它使用了 PaperMod 主题的 class，以保持样式统一。
+  */}}
+  <div class="friends-feed-list" style="display: flex; flex-direction: column; gap: 2rem;">
+      {{ $feedData := .Site.Data.friends_feed }}
+  
+      {{ if $feedData }}
+          {{ range $feedData }}
+          <article class="post-entry">
+              <header class="entry-header">
+                  <h2 class="entry-hint-parent">
+                      <a href="{{ .link }}" target="_blank" rel="noopener noreferrer" style="text-decoration: none;">{{ .title }}</a>
+                  </h2>
+              </header>
+              <div class="entry-content">
+                  <p>{{ .summary | plainify | htmlUnescape }}...</p>
+              </div>
+              <footer class="entry-footer">
+                  <span title='{{ .blog_name }}'>{{ .blog_name }}</span>&nbsp;·&nbsp;<time>{{ (time .published).Format "Jan 2, 2006" }}</time>
+              </footer>
+          </article>
+          {{ end }}
+      {{ else }}
+          <div class="post-content">
+            <p>正在抓取最新的动态，请稍后刷新...</p>
+          </div>
+      {{ end }}
+  </div>
