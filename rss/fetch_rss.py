@@ -27,14 +27,6 @@ CATEGORIES = {
 }
 
 # -- RSS 源（子类）配置 --
-# 新增参数说明:
-# fetch_full_content (bool): 是否需要二次抓取网页以获取全文。
-#   - True:  适用于RSS只提供摘要，需要访问原文链接获取全文的网站。
-#   - False: 适用于RSS本身就提供全文（如V2EX），或无法/不想抓取全文的情况。
-# content_selector (str):  当 fetch_full_content 为 True 时，用于提取正文的CSS选择器。
-#   - 这是最关键的配置，需要针对每个网站的HTML结构进行分析。
-# sanitize_summary (bool): 是否对RSS源中的summary/description字段进行HTML净化，而不是粗暴移除标签。
-#   - True:  保留摘要中的格式（加粗、链接、图片等），提升阅读体验。
 RSS_FEEDS = {
     "美团技术团队": {
         "url": "https://tech.meituan.com/feed/",
@@ -43,7 +35,7 @@ RSS_FEEDS = {
         "color": "#FFD93D",
         "description": "美团技术团队博客",
         "fetch_full_content": True,
-        "content_selector": "div.post-content", # 美团文章正文在<div class="post-content">中
+        "content_selector": "div.post-content",
         "sanitize_summary": False
     },
     "潮流周刊": {
@@ -52,8 +44,8 @@ RSS_FEEDS = {
         "icon": "📰",
         "color": "#FCA5A5",
         "description": "前端潮流技术周刊",
-        "fetch_full_content": False, # RSS内容已是全文
-        "sanitize_summary": True # 需要净化HTML以保留格式
+        "fetch_full_content": False,
+        "sanitize_summary": True
     },
     "V2EX技术专区": {
         "url": "https://www.v2ex.com/feed/tab/tech.xml",
@@ -61,8 +53,8 @@ RSS_FEEDS = {
         "icon": "🔧",
         "color": "#A5B4FC",
         "description": "V2EX技术讨论区",
-        "fetch_full_content": False, # V2EX的description就是帖子内容
-        "sanitize_summary": True # 需要净化HTML来展示帖子内容
+        "fetch_full_content": False,
+        "sanitize_summary": True
     },
     "V2EX酷工作": {
         "url": "https://www.v2ex.com/feed/tab/jobs.xml",
@@ -78,24 +70,14 @@ RSS_FEEDS = {
 # -- 其他设置 --
 MAX_ENTRIES_LIMIT = 200
 ENTRIES_PER_PAGE = 20
-FETCH_CONCURRENCY = 5  # 并发抓取线程数
-REQUEST_TIMEOUT = 15   # 网络请求超时时间（秒）
-
-# 模拟普通 Windows 10 上 Chrome 浏览器的请求头
+FETCH_CONCURRENCY = 5
+REQUEST_TIMEOUT = 15
 HEADERS = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36',
     'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
-    'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
-    'Accept-Encoding': 'gzip, deflate, br',
-    'Connection': 'keep-alive',
-    'Upgrade-Insecure-Requests': '1',
-    # --- 新增/修改的头 ---
-    'Referer': 'https://tech.meituan.com/', # 伪造一个来源页
-    'DNT': '1', # Do Not Track
-    'Sec-Fetch-Dest': 'document',
-    'Sec-Fetch-Mode': 'navigate',
-    'Sec-Fetch-Site': 'same-origin',
-    'Sec-Fetch-User': '?1',
+    'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8', 'Accept-Encoding': 'gzip, deflate, br', 'Connection': 'keep-alive',
+    'Upgrade-Insecure-Requests': '1', 'Referer': 'https://tech.meituan.com/', 'DNT': '1', 'Sec-Fetch-Dest': 'document',
+    'Sec-Fetch-Mode': 'navigate', 'Sec-Fetch-Site': 'same-origin', 'Sec-Fetch-User': '?1',
 }
 BALANCE_STRATEGIES = {"equal": "平均分配", "weighted": "按权重分配", "dynamic": "动态分配（基于活跃度）"}
 RSS_WEIGHTS = {"V2EX技术专区": 3, "美团技术团队": 3, "V2EX酷工作": 2, "潮流周刊": 2}
@@ -133,18 +115,13 @@ def generate_entry_id(link: str) -> str:
 def sanitize_html(html_content: str) -> str:
     """使用bleach净化HTML，保留安全标签和格式"""
     allowed_tags = [
-        'p', 'br', 'a', 'img', 'video', 'audio',
-        'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
-        'strong', 'em', 'u', 's', 'b', 'i',
-        'ul', 'ol', 'li', 'blockquote',
+        'p', 'br', 'a', 'img', 'video', 'audio', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
+        'strong', 'em', 'u', 's', 'b', 'i', 'ul', 'ol', 'li', 'blockquote',
         'pre', 'code', 'figure', 'figcaption'
     ]
     allowed_attrs = {
-        '*': ['class', 'style'],
-        'a': ['href', 'title', 'target'],
-        'img': ['src', 'alt', 'title', 'width', 'height', 'loading'],
-        'video': ['src', 'controls', 'width', 'height'],
-        'audio': ['src', 'controls'],
+        '*': ['class', 'style'], 'a': ['href', 'title', 'target'], 'img': ['src', 'alt', 'title', 'width', 'height', 'loading'],
+        'video': ['src', 'controls', 'width', 'height'], 'audio': ['src', 'controls'],
     }
     return bleach.clean(html_content, tags=allowed_tags, attributes=allowed_attrs, strip=True)
 
@@ -153,11 +130,10 @@ def fetch_full_content(url: str, selector: str) -> str:
     try:
         response = requests.get(url, headers=HEADERS, timeout=REQUEST_TIMEOUT)
         response.raise_for_status()
-        response.encoding = response.apparent_encoding # 自动检测编码
+        response.encoding = response.apparent_encoding
         soup = BeautifulSoup(response.text, 'lxml')
         content_element = soup.select_one(selector)
         if content_element:
-            # 可以在这里做一些清理，例如移除不想关的子元素
             return str(content_element)
     except requests.exceptions.RequestException as e:
         print(f"    -> 抓取全文失败: {url}, 错误: {e}")
@@ -165,10 +141,35 @@ def fetch_full_content(url: str, selector: str) -> str:
         print(f"    -> 解析全文失败: {url}, 错误: {e}")
     return ""
 
+# --- 新增: ShowDoc 推送函数 ---
+def send_showdoc_notification(url: str, title: str, content: str):
+    """
+    发送通知到 ShowDoc 推送服务。
+    """
+    print("\n--- 6. 正在发送 ShowDoc 推送... ---")
+    try:
+        payload = {
+            "title": title,
+            "content": content
+        }
+        response = requests.post(url, data=payload, timeout=10)
+        response.raise_for_status()
+        response_json = response.json()
+        if response_json.get("error_code") == 0:
+            print("✅ ShowDoc 推送成功！")
+        else:
+            print(f"❌ ShowDoc 推送失败: {response_json.get('error_message', '未知错误')}")
+    except requests.exceptions.RequestException as e:
+        print(f"❌ ShowDoc 推送请求失败: {e}")
+    except json.JSONDecodeError:
+        print("❌ ShowDoc 推送失败: 无法解析服务器响应。")
+    except Exception as e:
+        print(f"❌ ShowDoc 推送时发生未知错误: {e}")
+
 
 # --- 3. 核心抓取与处理逻辑 ---
-
 def fetch_and_process_feed(args) -> List[dict]:
+    # ... (此函数内容不变)
     """抓取并处理单个RSS源（设计为可并发调用）"""
     blog_name, feed_config, max_entries = args
     entries = []
@@ -195,27 +196,22 @@ def fetch_and_process_feed(args) -> List[dict]:
             dt_object = parse_date(published_str)
             summary_html = entry.get("summary", entry.get("description", ""))
 
-            # --- 全文获取与内容处理 ---
             summary = ""
             content = ""
 
-            # 1. 优先获取全文
             if feed_config.get("fetch_full_content") and feed_config.get("content_selector"):
                 content_html = fetch_full_content(entry.link, feed_config["content_selector"])
                 if content_html:
                     content = sanitize_html(content_html)
             
-            # 2. 如果没有全文，或配置了净化摘要，则处理摘要
             if feed_config.get("sanitize_summary", False):
                 summary = sanitize_html(summary_html)
             else:
                 summary = re.sub(r'<[^>]+>', '', summary_html).strip()[:200]
             
-            # 如果content为空，但净化后的summary不为空，则将summary作为content
             if not content and feed_config.get("sanitize_summary", False):
                 content = summary
 
-            # 提取作者和标签
             author = entry.get("author", "未知")
             tags = [tag.get('term') for tag in entry.get("tags", [])]
             
@@ -223,10 +219,7 @@ def fetch_and_process_feed(args) -> List[dict]:
                 "id": generate_entry_id(entry.link),
                 "blog_name": blog_name, "title": entry.title, "link": entry.link,
                 "published": dt_object.isoformat(), "timestamp": int(dt_object.timestamp()),
-                "summary": summary,
-                "content": content, # << 新增完整内容字段
-                "author": author,   # << 新增作者字段
-                "tags": tags,       # << 新增标签字段
+                "summary": summary, "content": content, "author": author, "tags": tags,
                 "category": feed_config.get("category", "其他"),
                 "source_icon": feed_config.get("icon", "📄"), "source_color": feed_config.get("color", "#666666")
             })
@@ -235,9 +228,8 @@ def fetch_and_process_feed(args) -> List[dict]:
         print(f"    -> 错误: 抓取或处理 '{blog_name}' 时发生严重错误: {e}")
     return entries
 
-
-# --- 4. 分配策略函数 (与原版相同，为保持完整性而保留) ---
-
+# --- 4. 分配策略函数 ---
+# ... (此部分函数内容不变)
 def calculate_equal_allocation(feed_count: int, total_limit: int) -> Dict[str, int]:
     if feed_count == 0: return {}
     base = total_limit // feed_count
@@ -248,7 +240,6 @@ def calculate_weighted_allocation(total_limit: int) -> Dict[str, int]:
     total_weight = sum(RSS_WEIGHTS.values())
     if total_weight == 0: return calculate_equal_allocation(len(RSS_FEEDS), total_limit)
     allocation = {name: int(total_limit * (RSS_WEIGHTS.get(name, 1) / total_weight)) for name in RSS_FEEDS.keys()}
-    # 修正因取整导致的和不等于total_limit的问题
     current_total = sum(allocation.values())
     diff = total_limit - current_total
     for i in range(diff): allocation[list(RSS_FEEDS.keys())[i % len(RSS_FEEDS)]] += 1
@@ -261,14 +252,11 @@ def calculate_dynamic_allocation(existing_entries: List[dict], total_limit: int)
     total = sum(counts.values())
     if total == 0: return calculate_equal_allocation(len(RSS_FEEDS), total_limit)
     
-    # 动态分配，基于历史文章比例，但保证每个源至少有1个配额
     ratios = {name: count / total for name, count in counts.items()}
     allocation = {name: max(1, int(ratio * total_limit)) for name, ratio in ratios.items()}
     
-    # 修正总数
     current_total = sum(allocation.values())
     while current_total < total_limit:
-        # 将剩余配额加到比例最高的源上
         max_ratio_feed = max(ratios, key=ratios.get)
         allocation[max_ratio_feed] += 1
         current_total += 1
@@ -279,7 +267,6 @@ def get_allocation_strategy(existing_entries: List[dict], strategy: str) -> Dict
     if strategy == "weighted": return calculate_weighted_allocation(MAX_ENTRIES_LIMIT)
     if strategy == "dynamic": return calculate_dynamic_allocation(existing_entries, MAX_ENTRIES_LIMIT)
     return calculate_dynamic_allocation(existing_entries, MAX_ENTRIES_LIMIT)
-
 
 # --- 5. 主函数 ---
 
@@ -320,16 +307,18 @@ def main(strategy: str):
     print("\n--- 4. 去重与合并... ---")
     combined_entries = {e['link']: e for e in existing_entries}
     new_count = 0
+    new_articles_details = [] # 用于推送更详细的内容
     for entry in all_new_entries:
         if entry['link'] not in combined_entries:
             new_count += 1
+            new_articles_details.append(f"- {entry['blog_name']}: {entry['title']}")
         combined_entries[entry['link']] = entry
 
-    # 排序并截断
     final_entries = sorted(combined_entries.values(), key=lambda x: x.get('timestamp', 0), reverse=True)[:MAX_ENTRIES_LIMIT]
     print(f"新增 {new_count} 篇文章，去重和截断后，最终共 {len(final_entries)} 篇。")
     
-    # 步骤 5: 生成元数据 (与原版类似，但更健壮)
+    # 步骤 5: 生成元数据
+    # ... (此部分内容不变)
     categories_meta = {name: {"icon": conf.get("icon", "📁"), "color": conf.get("color", "#666"), "count": 0, "sources": {}}
                        for name, conf in CATEGORIES.items()}
     source_counts = {name: 0 for name in RSS_FEEDS.keys()}
@@ -347,7 +336,6 @@ def main(strategy: str):
             }
             categories_meta[cat_name]['count'] += count
 
-    # 构建最终输出数据
     output_data = {
         "meta": {
             "total_articles": len(final_entries), "last_updated": datetime.now(timezone.utc).isoformat(),
@@ -373,8 +361,35 @@ def main(strategy: str):
     except IOError as e:
         print(f"错误！无法写入文件: {e}")
 
-# --- 6. 脚本执行入口 ---
+    # --- 步骤 7 (修改): 发送推送通知 ---
+    if new_count > 0:
+        push_url = os.environ.get("SHOWDOC_PUSH_URL")
+        if push_url:
+            title = f"📚 RSS源更新：发现 {new_count} 篇新文章！"
+            # 将新文章列表格式化为Markdown
+            content = "#### 本次更新内容：\n" + "\n".join(new_articles_details)
+            send_showdoc_notification(push_url, title, content)
+        else:
+            print("\n未配置 SHOWDOC_PUSH_URL 环境变量，跳过推送。")
 
+    # --- 步骤 8 (新增): 向 GitHub Actions 输出结果 (可选，用于其他步骤) ---
+    print("\n--- 7. 向 GitHub Actions 输出结果... ---")
+    if os.environ.get("GITHUB_ACTIONS") == "true":
+        output_file = os.environ.get("GITHUB_OUTPUT")
+        if output_file:
+            try:
+                with open(output_file, "a") as f:
+                    f.write(f"new_articles_count={new_count}\n")
+                print(f"成功将 new_articles_count={new_count} 写入 GitHub Actions output。")
+            except IOError as e:
+                print(f"错误: 无法写入 GitHub Actions output 文件: {e}")
+        else:
+            print("警告: 找不到 GITHUB_OUTPUT 环境变量。")
+    else:
+        print("不在 GitHub Actions 环境中，跳过输出。")
+
+
+# --- 脚本执行入口 ---
 if __name__ == "__main__":
     strategy_arg = "dynamic"
     if len(sys.argv) > 1 and sys.argv[1] in BALANCE_STRATEGIES:

@@ -7,8 +7,6 @@ on:
     branches:
       - main
   workflow_dispatch:
-  # --- 修改这里 ---
-  # 定时触发，对应东八区时间 (UTC+8) 的早上 8:00, 中午 12:00, 傍晚 18:00
   schedule:
     - cron: '0 0,4,10 * * *'
 
@@ -34,14 +32,12 @@ jobs:
       HUGO_ENVIRONMENT: production
       TZ: Asia/Shanghai
     steps:
-      # 步骤 1: 首先检出你的仓库代码！
       - name: Checkout
         uses: actions/checkout@v4
         with:
           submodules: recursive
           fetch-depth: 0
 
-      # 步骤 2: 安装 Hugo 和其他构建工具
       - name: Install Hugo CLI
         run: |
           wget -O ${{ runner.temp }}/hugo.deb https://github.com/gohugoio/hugo/releases/download/v${HUGO_VERSION}/hugo_extended_${HUGO_VERSION}_linux-amd64.deb
@@ -54,13 +50,11 @@ jobs:
           mv ${{ runner.temp }}/dart-sass/ /usr/local/bin
           echo "/usr/local/bin/dart-sass" >> $GITHUB_PATH
 
-      # 步骤 3: 设置 Python 环境
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.10'
 
-      # 步骤 4: 安装 Python 依赖 (带缓存)
       - name: Cache and Install Python dependencies
         uses: actions/cache@v4
         with:
@@ -72,20 +66,20 @@ jobs:
       - name: Install dependencies
         run: pip install -r rss/requirements.txt
       
-      # 步骤 5: 运行脚本抓取 RSS (现在它可以读取历史数据并写入新数据了)
+      # --- ↓↓↓ 这里是需要修改的地方 ↓↓↓ ---
       - name: Fetch RSS Feeds
+        env:
+          SHOWDOC_PUSH_URL: ${{ secrets.SHOWDOC_PUSH_URL }} # <<< 新增这行，注入Secret
         run: python rss/fetch_rss.py
+      # --- ↑↑↑ 修改结束 ↑↑↑ ---
 
-      # 步骤 6: 配置 GitHub Pages
       - name: Setup Pages
         id: pages
         uses: actions/configure-pages@v5
 
-      # 步骤 7: (可选) 安装 Node.js 依赖
       - name: Install Node.js dependencies
         run: "[[ -f package-lock.json || -f npm-shrinkwrap.json ]] && npm ci || true"
 
-      # 步骤 8: 缓存 Hugo 构建结果
       - name: Cache Restore
         id: cache-restore
         uses: actions/cache/restore@v4
@@ -99,7 +93,6 @@ jobs:
       - name: Configure Git
         run: git config core.quotepath false
 
-      # 步骤 9: 使用更新后的数据构建 Hugo 网站
       - name: Build with Hugo
         run: |
           hugo \
@@ -116,13 +109,11 @@ jobs:
             ${{ runner.temp }}/hugo_cache
           key: ${{ steps.cache-restore.outputs.cache-primary-key }}
 
-      # 步骤 10: 上传构建产物
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
           path: ./public
 
-  # deploy job 保持不变...
   deploy:
     environment:
       name: github-pages
