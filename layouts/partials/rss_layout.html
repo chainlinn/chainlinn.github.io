@@ -92,8 +92,10 @@
 
 
 {{/* 4. 核心 JavaScript 逻辑 (已修复所有问题) */}}
+{{/* 4. 核心 JavaScript 逻辑 (已修复所有问题) */}}
 <script>
 document.addEventListener('DOMContentLoaded', function () {
+    // --- 朋友圈列表和文章详情的核心逻辑 (保持不变) ---
     const allArticles = {{ $articles | jsonify | safeJS }};
     const allCategoriesData = {{ $categories | jsonify | safeJS }};
     const articlesPerPage = {{ $articlesPerPage }};
@@ -190,7 +192,162 @@ document.addEventListener('DOMContentLoaded', function () {
     
     let hljsPromise=null;function loadHljs(){if(!hljsPromise){hljsPromise=new Promise((resolve,reject)=>{if(window.hljs){return resolve(window.hljs)}const style=document.createElement('link');style.rel='stylesheet';style.href='https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/vs2015.min.css';document.head.appendChild(style);const script=document.createElement('script');script.src='https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js';script.onload=()=>resolve(window.hljs);script.onerror=reject;document.head.appendChild(script)})}return hljsPromise}
     function enhanceCodeBlock(preElement){if(preElement.parentElement.classList.contains('code-block-wrapper'))return;const codeElement=preElement.querySelector('code');const wrapper=document.createElement('div');wrapper.className='code-block-wrapper';const header=document.createElement('div');header.className='code-block-header';const langMatch=codeElement.className.match(/language-(\S+)/);const langName=document.createElement('span');langName.className='language-name';langName.textContent=langMatch?langMatch[1]:'';const copyButton=document.createElement('button');copyButton.className='copy-code-button';const copyIconSVG=`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>`;const checkIconSVG=`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`;copyButton.innerHTML=`<span class="copy-icon">${copyIconSVG}</span><span class="copy-text">复制</span>`;copyButton.addEventListener('click',()=>{navigator.clipboard.writeText(codeElement.innerText).then(()=>{copyButton.innerHTML=`<span class="copy-icon">${checkIconSVG}</span><span class="copy-text">已复制!</span>`;copyButton.classList.add('copied');setTimeout(()=>{copyButton.innerHTML=`<span class="copy-icon">${copyIconSVG}</span><span class="copy-text">复制</span>`;copyButton.classList.remove('copied')},2000)})});header.appendChild(langName);header.appendChild(copyButton);preElement.parentNode.insertBefore(wrapper,preElement);wrapper.appendChild(header);wrapper.appendChild(preElement)}
-    const lightbox=document.getElementById('image-lightbox'),lightboxImage=document.getElementById('lightbox-image'),lightboxCloseBtn=document.getElementById('lightbox-close');let isDragging=!1,scale=1,startPos={x:0,y:0},currentTranslate={x:0,y:0},initialPinchDistance=0,startScale=1;function getPinchDistance(e){return Math.hypot(e[0].pageX-e[1].pageX,e[0].pageY-e[1].pageY)}function handleTouchStart(e){e.preventDefault(),2===e.touches.length?(initialPinchDistance=getPinchDistance(e.touches),startScale=scale):1===e.touches.length&&(isDragging=!0,startPos={x:e.touches[0].clientX-currentTranslate.x,y:e.touches[0].clientY-currentTranslate.y},lightboxImage.style.cursor="grabbing")}function handleTouchMove(e){e.preventDefault(),2===e.touches.length&&initialPinchDistance>0?(scale=Math.min(Math.max(.5,startScale* (getPinchDistance(e.touches)/initialPinchDistance)),5),applyTransform()):1===e.touches.length&&isDragging&&(currentTranslate.x=e.touches[0].clientX-startPos.x,currentTranslate.y=e.clientY-startPos.y,applyTransform())}function handleTouchEnd(e){e.touches.length<2&&(initialPinchDistance=0),e.touches.length<1&&(isDragging=!1,lightboxImage.style.cursor="grab")}function openLightbox(e){lightboxImage.setAttribute("src",e),resetImageTransform(),lightbox.classList.add("is-visible"),document.body.style.overflow="hidden",lightbox.addEventListener("touchstart",handleTouchStart),lightbox.addEventListener("touchmove",handleTouchMove),lightbox.addEventListener("touchend",handleTouchEnd)}function closeLightbox(){lightbox.classList.remove("is-visible"),document.body.style.overflow="",lightbox.removeEventListener("touchstart",handleTouchStart),lightbox.removeEventListener("touchmove",handleTouchMove),lightbox.removeEventListener("touchend",handleTouchEnd)}function resetImageTransform(){scale=1,currentTranslate={x:0,y:0},applyTransform()}function applyTransform(){lightboxImage.style.transform=`translate(${currentTranslate.x}px, ${currentTranslate.y}px) scale(${scale})`}detailBody.addEventListener("click",e=>{"IMG"===e.target.tagName&&!e.target.classList.contains("image-error")&&openLightbox(e.target.src)}),lightboxCloseBtn.addEventListener("click",closeLightbox),lightbox.addEventListener("click",e=>{e.target===lightbox&&!isDragging&&closeLightbox()}),document.addEventListener("keydown",e=>{"Escape"===e.key&&lightbox.classList.contains("is-visible")&&closeLightbox()}),lightboxImage.addEventListener("wheel",e=>{e.preventDefault();const t=.1*(e.deltaY>0?-1:1);scale=Math.min(Math.max(.5,scale+t)),applyTransform()}),lightboxImage.addEventListener("mousedown",e=>{e.preventDefault(),isDragging=!0,startPos={x:e.clientX-currentTranslate.x,y:e.clientY-currentTranslate.y},lightboxImage.style.cursor="grabbing"}),window.addEventListener("mousemove",e=>{isDragging&&(currentTranslate.x=e.clientX-startPos.x,currentTranslate.y=e.clientY-startPos.y,applyTransform())}),window.addEventListener("mouseup",()=>{isDragging=!1,lightboxImage.style.cursor="grab"});
+
+    // --- 开始：图片灯箱 (Lightbox) 功能 [重构修复版] ---
+    const lightbox = document.getElementById('image-lightbox');
+    const lightboxImage = document.getElementById('lightbox-image');
+    const lightboxCloseBtn = document.getElementById('lightbox-close');
+
+    // 状态变量，用于跟踪拖动和缩放
+    let isDragging = false;
+    let scale = 1;
+    let startPos = { x: 0, y: 0 };
+    let currentTranslate = { x: 0, y: 0 };
+    
+    // 触摸事件专用状态变量
+    let initialPinchDistance = 0;
+    let startScale = 1;
+
+    // --- 核心功能函数 ---
+    function openLightbox(src) {
+        lightboxImage.setAttribute('src', src);
+        resetImageTransform();
+        lightbox.classList.add('is-visible');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeLightbox() {
+        lightbox.classList.remove('is-visible');
+        document.body.style.overflow = '';
+    }
+
+    function resetImageTransform() {
+        scale = 1;
+        currentTranslate = { x: 0, y: 0 };
+        applyTransform();
+    }
+
+    function applyTransform() {
+        lightboxImage.style.transform = `translate(${currentTranslate.x}px, ${currentTranslate.y}px) scale(${scale})`;
+    }
+
+    // --- 触摸事件处理 ---
+    function getPinchDistance(touches) {
+        return Math.hypot(touches[0].pageX - touches[1].pageX, touches[0].pageY - touches[1].pageY);
+    }
+
+    function handleTouchStart(e) {
+        // [修复] 如果事件目标是关闭按钮，则不执行任何操作，允许其默认的点击行为
+        if (e.target === lightboxCloseBtn) return;
+        
+        e.preventDefault(); // 只在非关闭按钮上阻止默认行为（如页面滚动）
+
+        if (e.touches.length === 2) { // 双指缩放开始
+            isDragging = false; // 确保单指拖动停止
+            initialPinchDistance = getPinchDistance(e.touches);
+            startScale = scale;
+        } else if (e.touches.length === 1) { // 单指拖动开始
+            isDragging = true;
+            startPos = {
+                x: e.touches[0].clientX - currentTranslate.x,
+                y: e.touches[0].clientY - currentTranslate.y
+            };
+            lightboxImage.style.cursor = 'grabbing';
+        }
+    }
+
+    function handleTouchMove(e) {
+        e.preventDefault();
+        
+        if (e.touches.length === 2 && initialPinchDistance > 0) { // 双指缩放中
+            const currentPinchDistance = getPinchDistance(e.touches);
+            const newScale = startScale * (currentPinchDistance / initialPinchDistance);
+            scale = Math.min(Math.max(0.5, newScale), 5); // 限制缩放范围
+            applyTransform();
+        } else if (e.touches.length === 1 && isDragging) { // 单指拖动中
+            currentTranslate.x = e.touches[0].clientX - startPos.x;
+            // [修复] 移动端拖动：使用 e.touches[0].clientY 而不是 e.clientY
+            currentTranslate.y = e.touches[0].clientY - startPos.y;
+            applyTransform();
+        }
+    }
+
+    function handleTouchEnd(e) {
+        // 当手指离开时，重置状态
+        if (e.touches.length < 2) {
+            initialPinchDistance = 0; // 结束缩放
+        }
+        if (e.touches.length < 1) {
+            isDragging = false; // 结束拖动
+            lightboxImage.style.cursor = 'grab';
+        }
+    }
+
+    // --- 鼠标事件处理 ---
+    function handleMouseDown(e) {
+        // [修复] 如果事件目标不是图片本身，则不启动拖动
+        if (e.target !== lightboxImage) return;
+
+        e.preventDefault();
+        isDragging = true;
+        startPos = {
+            x: e.clientX - currentTranslate.x,
+            y: e.clientY - currentTranslate.y
+        };
+        lightboxImage.style.cursor = 'grabbing';
+    }
+
+    function handleMouseMove(e) {
+        if (!isDragging) return;
+        currentTranslate.x = e.clientX - startPos.x;
+        currentTranslate.y = e.clientY - startPos.y;
+        applyTransform();
+    }
+
+    function handleMouseUp() {
+        isDragging = false;
+        lightboxImage.style.cursor = 'grab';
+    }
+    
+    function handleWheel(e) {
+        e.preventDefault();
+        const scaleAmount = e.deltaY > 0 ? -0.1 : 0.1;
+        scale = Math.min(Math.max(0.5, scale + scaleAmount), 5); // 限制缩放范围
+        applyTransform();
+    }
+
+    // --- 事件监听器绑定 ---
+    detailBody.addEventListener('click', e => {
+        if (e.target.tagName === 'IMG' && !e.target.classList.contains('image-error')) {
+            openLightbox(e.target.src);
+        }
+    });
+
+    // 关闭事件
+    lightboxCloseBtn.addEventListener('click', closeLightbox);
+    lightbox.addEventListener('click', e => {
+        // [修复] 只有当点击的是背景遮罩层本身时才关闭
+        if (e.target === lightbox) {
+            closeLightbox();
+        }
+    });
+    document.addEventListener('keydown', e => {
+        if (e.key === 'Escape' && lightbox.classList.contains('is-visible')) {
+            closeLightbox();
+        }
+    });
+
+    // 绑定触摸事件，使用 { passive: false } 来允许 preventDefault
+    lightbox.addEventListener('touchstart', handleTouchStart, { passive: false });
+    lightbox.addEventListener('touchmove', handleTouchMove, { passive: false });
+    lightbox.addEventListener('touchend', handleTouchEnd);
+
+    // 绑定鼠标事件
+    lightbox.addEventListener('mousedown', handleMouseDown);
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+    lightbox.addEventListener('wheel', handleWheel, { passive: false });
+    // --- 结束：图片灯箱 (Lightbox) 功能 ---
 });
 </script>
 
