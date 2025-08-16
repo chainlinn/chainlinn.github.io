@@ -1,7 +1,9 @@
 {{/*
     这个局部模板负责渲染朋友圈列表。
-    它实现了横向主分类 + 动态子分类的筛选模式。
-    (最终版：父类实色填充，悬停为激活状态的80%透明预演)
+    功能：点击文章列表项，在站内以模态框形式阅读全文。
+    最终优化 (VS Code 风格 + 图片查看器): 
+    - 动态加载高亮库，实现带头部的VSCode风格代码块。
+    - 点击文章内图片可打开一个支持缩放和平移的 lightbox 查看器。
 */}}
 
 {{/* 1. 从 Hugo 数据文件中获取数据 */}}
@@ -12,7 +14,6 @@
 
 {{/* 2. 分类筛选按钮区域 */}}
 <div class="feed-filter-container">
-    {{/* 主分类栏 */}}
     <div id="feed-main-categories" class="filter-bar main-bar">
         <button class="category-btn main-btn active" data-filter-type="all" data-filter-value="all">全部</button>
         {{ range $categoryName, $category := $categories }}
@@ -23,11 +24,7 @@
             {{ end }}
         {{ end }}
     </div>
-    
-    {{/* 子分类栏 - 默认隐藏 */}}
-    <div id="feed-sub-categories" class="filter-bar sub-bar">
-        {{/* 内容将由JavaScript生成 */}}
-    </div>
+    <div id="feed-sub-categories" class="filter-bar sub-bar"></div>
 </div>
 
 
@@ -38,7 +35,28 @@
 </div>
 
 
-{{/* 4. 核心 JavaScript 逻辑 (此部分无改动) */}}
+{{/* 4. 文章内容模态框 (Modal) 的 HTML 结构 */}}
+<div id="article-modal" class="modal-overlay">
+    <div class="modal-content-wrapper">
+        <button id="modal-close" class="modal-close-btn" aria-label="关闭">&times;</button>
+        <div class="modal-header">
+            <h2 id="modal-title"></h2>
+            <div id="modal-meta" class="entry-footer"></div>
+        </div>
+        <div id="modal-body" class="modal-body-content post-content"></div>
+    </div>
+</div>
+
+{{/* 5. 图片 Lightbox 查看器的 HTML 结构 */}}
+<div id="image-lightbox" class="lightbox-overlay">
+    <div class="lightbox-content">
+        <img id="lightbox-image" src="" alt="放大的图片">
+    </div>
+    <button id="lightbox-close" class="lightbox-close-btn" aria-label="关闭">&times;</button>
+</div>
+
+
+{{/* 6. 核心 JavaScript 逻辑 */}}
 <script>
 document.addEventListener('DOMContentLoaded', function () {
     const allArticles = {{ $articles | jsonify | safeJS }};
@@ -48,48 +66,35 @@ document.addEventListener('DOMContentLoaded', function () {
     if (!Array.isArray(allArticles) || allArticles.length === 0) {
         articlesContainer.innerHTML = '<div class="post-content"><p>暂时没有动态信息。</p></div>'; return;
     }
-
     const mainCategoriesContainer = document.getElementById('feed-main-categories');
     const subCategoriesContainer = document.getElementById('feed-sub-categories');
     const loader = document.getElementById('feed-loader');
-    
+    const modal = document.getElementById('article-modal');
+    const modalTitle = document.getElementById('modal-title');
+    const modalMeta = document.getElementById('modal-meta');
+    const modalBody = document.getElementById('modal-body');
+    const modalCloseBtn = document.getElementById('modal-close');
     let currentFilter = { main: 'all', sub: 'all' };
     let displayedArticles = [], articlesToDisplay = [], isLoading = false;
     const articlesPerPage = 10;
 
     function renderSubCategories(categoryName) {
         const categoryData = allCategoriesData[categoryName];
-        if (!categoryData) {
-            subCategoriesContainer.innerHTML = '';
-            subCategoriesContainer.classList.remove('is-visible');
-            return;
-        }
-
+        if (!categoryData) { subCategoriesContainer.innerHTML = ''; subCategoriesContainer.classList.remove('is-visible'); return; }
         let subHTML = `<button class="category-btn sub-btn active" data-filter-type="category_all" data-filter-value="${categoryName}">全部 ${categoryName}</button>`;
         for (const sourceName in categoryData.sources) {
             const source = categoryData.sources[sourceName];
-            if (source.count > 0) {
-                subHTML += `<button class="category-btn sub-btn" data-filter-type="source" data-filter-value="${sourceName}">${source.icon || ''} ${sourceName}</button>`;
-            }
+            if (source.count > 0) { subHTML += `<button class="category-btn sub-btn" data-filter-type="source" data-filter-value="${sourceName}">${source.icon || ''} ${sourceName}</button>`; }
         }
-        subCategoriesContainer.innerHTML = subHTML;
-        subCategoriesContainer.classList.add('is-visible');
+        subCategoriesContainer.innerHTML = subHTML; subCategoriesContainer.classList.add('is-visible');
     }
 
     function updateFilterUI() {
-        mainCategoriesContainer.querySelectorAll('.category-btn').forEach(btn => {
-            btn.classList.toggle('active', btn.dataset.filterValue === currentFilter.main);
-        });
-        if (currentFilter.main === 'all') {
-            subCategoriesContainer.classList.remove('is-visible');
-            subCategoriesContainer.innerHTML = '';
-        } else {
-            subCategoriesContainer.querySelectorAll('.category-btn').forEach(btn => {
-                btn.classList.toggle('active', btn.dataset.filterValue === currentFilter.sub);
-            });
-        }
+        mainCategoriesContainer.querySelectorAll('.category-btn').forEach(btn => btn.classList.toggle('active', btn.dataset.filterValue === currentFilter.main));
+        if (currentFilter.main === 'all') { subCategoriesContainer.classList.remove('is-visible'); subCategoriesContainer.innerHTML = '';
+        } else { subCategoriesContainer.querySelectorAll('.category-btn').forEach(btn => btn.classList.toggle('active', btn.dataset.filterValue === currentFilter.sub)); }
     }
-    
+
     function filterArticles() {
         articlesContainer.innerHTML = ''; displayedArticles = [];
         if (currentFilter.main === 'all') { articlesToDisplay = allArticles; } 
@@ -102,7 +107,7 @@ document.addEventListener('DOMContentLoaded', function () {
     mainCategoriesContainer.addEventListener('click', e => {
         const button = e.target.closest('.category-btn'); if (!button) return;
         const value = button.dataset.filterValue;
-        if (value === currentFilter.main) { if (value !== 'all') { currentFilter = { main: 'all', sub: 'all' }; } }
+        if (value === currentFilter.main && value !== 'all') { currentFilter = { main: 'all', sub: 'all' }; }
         else { currentFilter = { main: value, sub: value }; if (value !== 'all') { renderSubCategories(value); } }
         updateFilterUI(); filterArticles();
     });
@@ -115,73 +120,279 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const handleScroll = () => { if (window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 300 && !isLoading && displayedArticles.length < articlesToDisplay.length) { loadMoreArticles(); }};
     window.addEventListener('scroll', handleScroll);
+
+    function createArticleHTML(article) {
+        const d = new Date(article.published).toLocaleString('zh-CN', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = article.content || article.summary;
+        let summaryText = tempDiv.textContent || tempDiv.innerText || "";
+        summaryText = summaryText.length > 150 ? summaryText.substring(0, 150) + '...' : summaryText;
+        return `
+        <article class="post-entry">
+            <header class="entry-header">
+                <h2 class="entry-hint-parent"><a href="javascript:void(0);" class="read-more-trigger" data-id="${article.id}">${article.title}</a></h2>
+            </header>
+            <div class="entry-content"><p>${summaryText}</p></div>
+            <footer class="entry-footer">
+                <span title="${article.blog_name}">${article.source_icon} ${article.blog_name}</span>&nbsp;·&nbsp;<time>${d}</time>
+            </footer>
+        </article>`;
+    }
+
+    function loadMoreArticles() {
+        if (isLoading) return;
+        isLoading = true;
+        loader.style.display = 'block';
+        setTimeout(() => {
+            const startIndex = displayedArticles.length;
+            const endIndex = startIndex + articlesPerPage;
+            const articlesChunk = articlesToDisplay.slice(startIndex, endIndex);
+            if (articlesChunk.length > 0) {
+                let articlesHTML = '';
+                articlesChunk.forEach(article => { articlesHTML += createArticleHTML(article); });
+                articlesContainer.insertAdjacentHTML('beforeend', articlesHTML);
+                displayedArticles = displayedArticles.concat(articlesChunk);
+            }
+            loader.style.display = 'none';
+            isLoading = false;
+        }, 300);
+    }
+
+    let hljsPromise = null;
+    function loadHljs() {
+        if (!hljsPromise) {
+            hljsPromise = new Promise((resolve, reject) => {
+                if (window.hljs) { return resolve(window.hljs); }
+                const style = document.createElement('link');
+                style.rel = 'stylesheet';
+                style.href = 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/vs2015.min.css';
+                document.head.appendChild(style);
+                const script = document.createElement('script');
+                script.src = 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js';
+                script.onload = () => resolve(window.hljs);
+                script.onerror = reject;
+                document.head.appendChild(script);
+            });
+        }
+        return hljsPromise;
+    }
+
+    function openModal(articleId) {
+        const article = allArticles.find(a => a.id === articleId);
+        if (!article) return;
+        modalTitle.textContent = article.title;
+        const d = new Date(article.published).toLocaleString('zh-CN', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+        modalMeta.innerHTML = `
+            <span title="${article.blog_name}">${article.source_icon} ${article.blog_name}</span>&nbsp;·&nbsp;
+            <time>${d}</time>&nbsp;·&nbsp;
+            <a href="${article.link}" target="_blank" rel="noopener noreferrer">查看原文</a>
+        `;
+        modalBody.innerHTML = article.content || '<p>此文章没有提供正文内容。</p>'; 
+        
+        modalBody.querySelectorAll('img').forEach(img => {
+            img.classList.remove('image-error');
+            img.onerror = function() { this.classList.add('image-error'); this.onerror = null; };
+        });
+
+        const codeBlocks = modalBody.querySelectorAll('pre code');
+        if (codeBlocks.length > 0) {
+            loadHljs().then(hljs => {
+                codeBlocks.forEach((block) => {
+                    hljs.highlightElement(block);
+                    if (block.parentElement.tagName === 'PRE') {
+                        enhanceCodeBlock(block.parentElement);
+                    }
+                });
+            }).catch(err => console.error("Highlight.js 加载失败:", err));
+        }
+
+        modal.classList.add('is-visible');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function enhanceCodeBlock(preElement) {
+        if (preElement.parentElement.classList.contains('code-block-wrapper')) return;
+
+        const codeElement = preElement.querySelector('code');
+        const wrapper = document.createElement('div');
+        wrapper.className = 'code-block-wrapper';
+
+        const header = document.createElement('div');
+        header.className = 'code-block-header';
+
+        const langMatch = codeElement.className.match(/language-(\S+)/);
+        const langName = document.createElement('span');
+        langName.className = 'language-name';
+        langName.textContent = langMatch ? langMatch[1] : '';
+
+        const copyButton = document.createElement('button');
+        copyButton.className = 'copy-code-button';
+        const copyIconSVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>`;
+        const checkIconSVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
+        copyButton.innerHTML = `<span class="copy-icon">${copyIconSVG}</span><span class="copy-text">复制</span>`;
+
+        copyButton.addEventListener('click', () => {
+            navigator.clipboard.writeText(codeElement.innerText).then(() => {
+                copyButton.innerHTML = `<span class="copy-icon">${checkIconSVG}</span><span class="copy-text">已复制!</span>`;
+                copyButton.classList.add('copied');
+                setTimeout(() => {
+                    copyButton.innerHTML = `<span class="copy-icon">${copyIconSVG}</span><span class="copy-text">复制</span>`;
+                    copyButton.classList.remove('copied');
+                }, 2000);
+            });
+        });
+
+        header.appendChild(langName);
+        header.appendChild(copyButton);
+        
+        preElement.parentNode.insertBefore(wrapper, preElement);
+        wrapper.appendChild(header);
+        wrapper.appendChild(preElement);
+    }
     
-    function createArticleHTML(article) {const d=new Date(article.published).toLocaleString('zh-CN',{year:'numeric',month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});const s=article.summary.length>150?article.summary.substring(0,150)+'...':article.summary;const t=document.createElement('div');t.textContent=s;const summary=t.innerHTML;return `<article class="post-entry"><header class="entry-header"><h2 class="entry-hint-parent"><a href="${article.link}" target="_blank" rel="noopener noreferrer">${article.title}</a></h2></header><div class="entry-content"><p>${summary}</p></div><footer class="entry-footer"><span title="${article.blog_name}">${article.source_icon} ${article.blog_name}</span>&nbsp;·&nbsp;<time>${d}</time></footer></article>`;}
-    function loadMoreArticles() {if(isLoading) return; isLoading = true; loader.style.display = 'block';setTimeout(() => {const s=displayedArticles.length,e=s+articlesPerPage,t=articlesToDisplay.slice(s,e);if(t.length>0){let s='';t.forEach(e=>{s+=createArticleHTML(e)}),articlesContainer.insertAdjacentHTML('beforeend',s),displayedArticles=displayedArticles.concat(t)}loader.style.display = 'none';isLoading = false;}, 300);}
+    function closeModal() {
+        modal.classList.remove('is-visible');
+        document.body.style.overflow = '';
+    }
+    articlesContainer.addEventListener('click', function(e) {
+        const trigger = e.target.closest('.read-more-trigger');
+        if (trigger && trigger.dataset.id) { e.preventDefault(); openModal(trigger.dataset.id); }
+    });
+    modalCloseBtn.addEventListener('click', closeModal);
+    modal.addEventListener('click', function(e) { if (e.target === modal) { closeModal(); } });
+    document.addEventListener('keydown', function(e) { if (e.key === "Escape" && modal.classList.contains('is-visible')) { closeModal(); } });
+    
+    const lightbox = document.getElementById('image-lightbox');
+    const lightboxImage = document.getElementById('lightbox-image');
+    const lightboxCloseBtn = document.getElementById('lightbox-close');
+    let isDragging = false, scale = 1, startPos = { x: 0, y: 0 }, currentTranslate = { x: 0, y: 0 };
+    
+    function openLightbox(src) {
+        lightboxImage.setAttribute('src', src);
+        resetImageTransform();
+        lightbox.classList.add('is-visible');
+        document.querySelector('.modal-body-content').style.overflow = 'hidden';
+    }
+
+    function closeLightbox() {
+        lightbox.classList.remove('is-visible');
+        document.querySelector('.modal-body-content').style.overflow = 'auto';
+    }
+
+    function resetImageTransform() {
+        scale = 1;
+        currentTranslate = { x: 0, y: 0 };
+        applyTransform();
+    }
+
+    function applyTransform() {
+        lightboxImage.style.transform = `translate(${currentTranslate.x}px, ${currentTranslate.y}px) scale(${scale})`;
+    }
+
+    modalBody.addEventListener('click', (e) => {
+        if (e.target.tagName === 'IMG' && !e.target.classList.contains('image-error')) {
+            openLightbox(e.target.src);
+        }
+    });
+
+    lightboxCloseBtn.addEventListener('click', closeLightbox);
+    lightbox.addEventListener('click', (e) => {
+        if (e.target === lightbox) closeLightbox();
+    });
+    document.addEventListener('keydown', function(e) {
+        if (e.key === "Escape" && lightbox.classList.contains('is-visible')) {
+            closeLightbox();
+        }
+    });
+
+    lightboxImage.addEventListener('wheel', (e) => {
+        e.preventDefault();
+        const scaleAmount = e.deltaY > 0 ? -0.1 : 0.1;
+        scale = Math.min(Math.max(0.5, scale + scaleAmount), 5);
+        applyTransform();
+    });
+
+    lightboxImage.addEventListener('mousedown', (e) => {
+        e.preventDefault();
+        isDragging = true;
+        startPos = { x: e.clientX - currentTranslate.x, y: e.clientY - currentTranslate.y };
+        lightboxImage.style.cursor = 'grabbing';
+    });
+
+    window.addEventListener('mousemove', (e) => {
+        if (!isDragging) return;
+        currentTranslate.x = e.clientX - startPos.x;
+        currentTranslate.y = e.clientY - startPos.y;
+        applyTransform();
+    });
+
+    window.addEventListener('mouseup', () => {
+        isDragging = false;
+        lightboxImage.style.cursor = 'grab';
+    });
     
     filterArticles();
 });
 </script>
 
 
-{{/* 5. CSS 样式 - 最终“混合悬停”版 */}}
+{{/* 7. CSS 样式 */}}
 <style>
-    /* 容器布局 */
-    .feed-filter-container {
-        display: flex; flex-direction: column; gap: 16px; margin-bottom: 2.5rem;
-    }
-    .filter-bar {
-        display: flex; flex-wrap: wrap; gap: 12px; align-items: center;
-    }
-
-    /* --- 父类按钮样式 --- */
-    .main-btn {
-        padding: 8px 16px; border: 1px solid var(--border-color);
-        background-color: var(--code-bg); color: var(--primary);
-        border-radius: 8px; cursor: pointer; font-size: 0.9em; font-weight: 500;
-        transition: all 0.15s ease-out; /* 平滑、快速的动画 */
-    }
-
-    /* 父类激活状态 (最终状态) */
-    .main-btn.active {
-        background-color: var(--primary); color: var(--entry); border-color: var(--primary);
-        font-weight: 600; box-shadow: 0 4px 14px 0 rgba(var(--primary-rgb), 0.25);
-    }
-    
-    /* 核心: 父类悬停预演 (激活状态的80%透明版) */
-    .main-btn:hover:not(.active) {
-        background-color: var(--primary); color: var(--entry); border-color: var(--primary);
-        font-weight: 600; box-shadow: 0 4px 14px 0 rgba(var(--primary-rgb), 0.25);
-        opacity: 0.6;
-        transform: scale(1.03); /* 微小缩放 */
-    }
-
-
-    /* --- 子类按钮样式 --- */
-    .sub-btn {
-        padding: 5px 14px; border: 2px solid transparent;
-        background-color: var(--code-bg); color: var(--secondary);
-        border-radius: 9999px; font-size: 0.85em; font-weight: 400; cursor: pointer;
-        transition: all 0.15s ease-out;
-    }
-
-    /* 子类激活状态：纯白色边框 (最终状态) */
-    .sub-btn.active {
-        border-color: #FFFFFF;
-        color: var(--primary);
-        font-weight: 500;
-        background-color: var(--code-bg);
-    }
-    
-    /* 核心: 子类悬停预演 (激活状态的80%透明版) */
-    .sub-btn:hover:not(.active) {
-        border-color: rgba(255, 255, 255, 0.2); /* 80%透明的白色边框 */
-        color: var(--primary);
-        background-color: var(--code-bg);
-        transform: scale(1.03);
-    }
-
-    /* 子分类栏的显示/隐藏 */
+    /* --- 基础与筛选按钮样式 --- */
+    .feed-filter-container { display: flex; flex-direction: column; gap: 16px; margin-bottom: 2.5rem; }
+    .filter-bar { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+    .main-btn { padding: 8px 16px; border: 1px solid var(--border-color); background-color: var(--code-bg); color: var(--primary); border-radius: 8px; cursor: pointer; font-size: 0.9em; font-weight: 500; transition: all 0.15s ease-out; }
+    .main-btn.active { background-color: var(--primary); color: var(--entry); border-color: var(--primary); font-weight: 600; box-shadow: 0 4px 14px 0 rgba(var(--primary-rgb), 0.25); }
+    .main-btn:hover:not(.active) { background-color: var(--primary); color: var(--entry); border-color: var(--primary); font-weight: 600; box-shadow: 0 4px 14px 0 rgba(var(--primary-rgb), 0.25); opacity: 0.6; transform: scale(1.03); }
+    .sub-btn { padding: 5px 14px; border: 2px solid transparent; background-color: var(--code-bg); color: var(--secondary); border-radius: 9999px; font-size: 0.85em; font-weight: 400; cursor: pointer; transition: all 0.15s ease-out; }
+    .sub-btn.active { border-color: #FFFFFF; color: var(--primary); font-weight: 500; background-color: var(--code-bg); }
+    .sub-btn:hover:not(.active) { border-color: rgba(255, 255, 255, 0.2); color: var(--primary); background-color: var(--code-bg); transform: scale(1.03); }
     .sub-bar { display: none; }
     .sub-bar.is-visible { display: flex; }
+    .read-more-trigger { text-decoration: none; color: inherit; cursor: pointer; }
+    .read-more-trigger:hover { text-decoration: underline; }
+
+    /* --- 模态框基础样式 --- */
+    .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.7); display: flex; align-items: center; justify-content: center; z-index: 1000; opacity: 0; visibility: hidden; transition: opacity 0.3s ease, visibility 0s 0.3s linear; }
+    .modal-overlay.is-visible { opacity: 1; visibility: visible; transition: opacity 0.3s ease; }
+    .modal-content-wrapper { position: relative; background-color: var(--entry); padding: 2.5rem; border-radius: 12px; max-width: 800px; width: 90%; max-height: 90vh; display: flex; flex-direction: column; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2); transform: scale(0.95); transition: transform 0.3s ease; }
+    .modal-overlay.is-visible .modal-content-wrapper { transform: scale(1); }
+    .modal-close-btn { position: absolute; top: 1rem; right: 1.2rem; background: none; border: none; font-size: 2rem; line-height: 1; color: var(--secondary); cursor: pointer; transition: color 0.2s ease, transform 0.2s ease; }
+    .modal-close-btn:hover { color: var(--primary); transform: rotate(90deg); }
+    .modal-header { padding-bottom: 1rem; border-bottom: 1px solid var(--border-color); margin-bottom: 1.5rem; }
+    #modal-title { margin: 0 0 0.5rem 0; font-size: 1.5em; line-height: 1.3; }
+    .modal-body-content { overflow-y: auto; scrollbar-width: thin; scrollbar-color: var(--secondary) var(--code-bg); }
+    .modal-body-content::-webkit-scrollbar { width: 8px; }
+    .modal-body-content::-webkit-scrollbar-track { background: var(--code-bg); border-radius: 4px; }
+    .modal-body-content::-webkit-scrollbar-thumb { background-color: var(--secondary); border-radius: 4px; border: 2px solid var(--code-bg); }
+    
+    /* --- 图片样式与失败处理 --- */
+    .modal-body-content img { max-width: 100%; height: auto; display: block; margin: 1em 0; border-radius: 8px; background-color: var(--code-bg); cursor: zoom-in; }
+    .modal-body-content img.image-error { position: relative; min-height: 150px; width: 100%; font-size: 0.9em; color: var(--secondary); -webkit-filter: grayscale(100%); filter: grayscale(100%); content: ''; cursor: default; }
+    .modal-body-content img.image-error::before { content: '🖼️'; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 2.5em; opacity: 0.5; }
+    .modal-body-content img.image-error::after { content: '图片加载失败'; position: absolute; bottom: 1em; left: 50%; transform: translateX(-50%); font-family: sans-serif; }
+    
+    /* --- 行内代码样式 --- */
+    .modal-body-content :not(pre) > code { font-family: 'SF Mono', 'Fira Code', monospace; font-size: 0.9em; background-color: var(--code-bg); padding: 0.2em 0.4em; border-radius: 4px; color: var(--primary); }
+    
+    /* --- VS Code 风格代码块样式 --- */
+    .code-block-wrapper { margin: 1.5em 0; border: 1px solid var(--border-color); border-radius: 8px; overflow: hidden; background-color: #1E1E1E; }
+    .code-block-header { display: flex; justify-content: space-between; align-items: center; padding: 0.6em 0.8em; background-color: #333333; border-bottom: 1px solid var(--border-color); }
+    .language-name { font-family: 'JetBrains Mono', 'Fira Code', 'SF Mono', monospace; font-size: 0.8em; color: #cccccc; text-transform: lowercase; }
+    .copy-code-button { display: inline-flex; align-items: center; gap: 0.4em; padding: 0.4em 0.6em; font-size: 0.8em; background-color: transparent; color: #cccccc; border: none; border-radius: 6px; cursor: pointer; transition: all 0.2s ease; }
+    .copy-code-button:hover { background-color: rgba(255, 255, 255, 0.1); color: #ffffff; }
+    .copy-code-button.copied { color: #4CAF50; }
+    .copy-code-button svg { width: 16px; height: 16px; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; fill: none; }
+    .copy-code-button .copy-text { line-height: 1; }
+    .modal-body-content pre { margin: 0; border: none; border-radius: 0; padding: 1.2em; overflow-x: auto; background: #1E1E1E !important; }
+    .modal-body-content pre code.hljs { font-family: 'JetBrains Mono', 'Fira Code', 'SF Mono', 'Consolas', 'Courier New', monospace; font-size: 0.9em; line-height: 1.6; background: none !important; padding: 0 !important; }
+
+    /* --- 图片 Lightbox 样式 --- */
+    .lightbox-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.85); display: flex; align-items: center; justify-content: center; z-index: 2000; opacity: 0; visibility: hidden; transition: opacity 0.3s ease, visibility 0s 0.3s linear; }
+    .lightbox-overlay.is-visible { opacity: 1; visibility: visible; transition: opacity 0.3s ease; }
+    .lightbox-content { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+    #lightbox-image { max-width: 95%; max-height: 95%; transition: transform 0.2s cubic-bezier(0.25, 0.1, 0.25, 1); cursor: grab; user-select: none; }
+    #lightbox-image:active { cursor: grabbing; }
+    .lightbox-close-btn { position: absolute; top: 20px; right: 20px; background: none; border: none; font-size: 2.5rem; color: rgba(255, 255, 255, 0.8); cursor: pointer; transition: color 0.2s ease, transform 0.2s ease; }
+    .lightbox-close-btn:hover { color: #fff; transform: scale(1.1); }
 </style>
