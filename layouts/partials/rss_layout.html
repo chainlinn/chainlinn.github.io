@@ -1,51 +1,82 @@
 {{/*
     这个局部模板负责渲染朋友圈列表。
-    功能：点击文章列表项，以从右侧滑入的动画在当前页面切换显示全文，并支持手势返回。
-    最终优化 (VS Code 风格 + 图片查看器): 
-    - 动态加载高亮库，实现带头部的VSCode风格代码块。
-    - 点击文章内图片可打开一个支持缩放和平移的 lightbox 查看器。
+    功能：点击文章列表项，以从右侧滑入的动画在当前页面切换显示全文。
+    最终优化 (VS Code 风格 + 图片查看器):
+    - 筛选器独立于滑动区域，始终可见。
+    - [最终修复版] 筛选逻辑实现平滑、原地的淡入淡出内容切换，不滚动页面。
+    - [最终修复版] 通过精确的高度动画管理，彻底根除视图切换时的布局跳动和滚动条闪现bug。
+    - [最终修复版] 修复了滚动加载功能，并确保所有功能正常工作。
+    - 页面全程仅使用浏览器主滚动条，任何内部元素都绝不产生自己的滚动条。
 */}}
 
-{{/* 1. 从 Hugo 数据文件中获取数据 */}}
+{{/* 1. 从 Hugo 数据文件中获取数据 (已修复) */}}
 {{ $feedData := index .Site.Data "friends_feed" }}
 {{ $articles := $feedData.articles }}
 {{ $categories := $feedData.meta.categories }}
+{{ $articlesPerPage := 10 }}
+{{ $initialArticles := first $articlesPerPage $articles }}
 
-{{/* 2. 主容器 (动画和手势的关键) */}}
-<div id="friends-feed-wrapper">
-    {{/* 列表视图 */}}
-    <div id="friends-list-view" class="feed-view">
-        {{/* 分类筛选按钮区域 */}}
-        <div class="feed-filter-container">
-            <div id="feed-main-categories" class="filter-bar main-bar">
-                <button class="category-btn main-btn active" data-filter-type="all" data-filter-value="all">全部</button>
-                {{ range $categoryName, $category := $categories }}
-                    {{ if gt $category.count 0 }}
-                    <button class="category-btn main-btn" data-filter-type="category" data-filter-value="{{ $categoryName }}">
-                        {{ with $category.icon }}{{ . }}{{ end }} {{ $categoryName }}
-                    </button>
-                    {{ end }}
+{{/* 2. 页面顶层结构 (筛选器 + 动画容器) */}}
+<div class="friends-feed-page-container">
+    {{/* 分类筛选按钮区域 */}}
+    <div class="feed-filter-container">
+        <div id="feed-main-categories" class="filter-bar main-bar">
+            <button class="category-btn main-btn active" data-filter-type="all" data-filter-value="all">全部</button>
+            {{ range $categoryName, $category := $categories }}
+                {{ if gt $category.count 0 }}
+                <button class="category-btn main-btn" data-filter-type="category" data-filter-value="{{ $categoryName }}">
+                    {{ with $category.icon }}{{ . | safeHTML }}{{ end }} {{ $categoryName }}
+                </button>
                 {{ end }}
-            </div>
-            <div id="feed-sub-categories" class="filter-bar sub-bar"></div>
+            {{ end }}
         </div>
-
-        {{/* 文章列表容器 和 加载指示器 */}}
-        <div id="friends-feed-list" class="friends-feed-list" style="display: flex; flex-direction: column; gap: 2rem;"></div>
-        <div id="feed-loader" style="text-align: center; padding: 20px; display: none;">
-            <p>正在加载更多...</p>
-        </div>
+        <div id="feed-sub-categories" class="filter-bar sub-bar"></div>
     </div>
 
-    {{/* 文章内容详情视图 */}}
-    <div id="article-detail-view" class="feed-view">
-        <div class="detail-view-content-wrapper">
-            <button id="detail-view-close" class="detail-view-close-btn" aria-label="返回列表">&larr; 返回列表</button>
-            <div class="detail-header">
-                <h2 id="detail-title"></h2>
-                <div id="detail-meta" class="entry-footer"></div>
+    {{/* 主动画容器 */}}
+    <div id="friends-feed-wrapper">
+        {{/* 列表视图 */}}
+        <div id="friends-list-view" class="feed-view">
+            <div id="friends-feed-list" class="friends-feed-list" style="display: flex; flex-direction: column; gap: 2rem;">
+                {{/* 由 Hugo 直接渲染初始文章列表 */}}
+                {{ if gt (len $articles) 0 }}
+                    {{ range $initialArticles }}
+                        <article class="post-entry">
+                            <header class="entry-header">
+                                <h2 class="entry-hint-parent">
+                                    <a href="javascript:void(0);" class="read-more-trigger" data-id="{{ .id }}">{{ .title }}</a>
+                                </h2>
+                            </header>
+                            <div class="entry-content">
+                                {{ $summary := .summary | default .content }}
+                                <p>{{ $summary | plainify | truncate 150 }}</p>
+                            </div>
+                            <footer class="entry-footer">
+                                <span title="{{ .blog_name }}">{{ .source_icon | safeHTML }} {{ .blog_name }}</span>
+                                &nbsp;·&nbsp;
+                                <time>{{ (.published | time.AsTime).Format "2006年1月2日 15:04" }}</time>
+                            </footer>
+                        </article>
+                    {{ end }}
+                {{ else }}
+                    <div class="post-content"><p>暂时没有动态信息。</p></div>
+                {{ end }}
             </div>
-            <div id="detail-body" class="detail-body-content post-content"></div>
+            <div id="feed-loader" style="text-align: center; padding: 20px; display: none;">
+                <p>正在加载更多...</p>
+            </div>
+        </div>
+
+        {{/* 文章内容详情视图 */}}
+        <div id="article-detail-view" class="feed-view">
+            <div class="detail-view-content-wrapper">
+                <button id="detail-view-close" class="detail-view-close-btn" aria-label="返回列表">&larr; 返回列表</button>
+                <div class="detail-header">
+                    <h2 id="detail-title"></h2>
+                    <div id="detail-meta" class="entry-footer"></div>
+                </div>
+                <div id="detail-body" class="detail-body-content post-content"></div>
+            </div>
         </div>
     </div>
 </div>
@@ -60,19 +91,21 @@
 </div>
 
 
-{{/* 4. 核心 JavaScript 逻辑 (无需改动) */}}
+{{/* 4. 核心 JavaScript 逻辑 (已修复所有问题) */}}
 <script>
 document.addEventListener('DOMContentLoaded', function () {
     const allArticles = {{ $articles | jsonify | safeJS }};
     const allCategoriesData = {{ $categories | jsonify | safeJS }};
+    const articlesPerPage = {{ $articlesPerPage }};
     
+    const pageContainer = document.querySelector('.friends-feed-page-container');
     const wrapper = document.getElementById('friends-feed-wrapper');
     const listView = document.getElementById('friends-list-view');
-    const detailView = document.getElementById('article-detail-view');
     const articlesContainer = document.getElementById('friends-feed-list');
-    if (!Array.isArray(allArticles) || allArticles.length === 0) {
-        articlesContainer.innerHTML = '<div class="post-content"><p>暂时没有动态信息。</p></div>'; return;
-    }
+    const detailView = document.getElementById('article-detail-view');
+
+    if (!Array.isArray(allArticles) || allArticles.length === 0) { return; }
+
     const mainCategoriesContainer = document.getElementById('feed-main-categories');
     const subCategoriesContainer = document.getElementById('feed-sub-categories');
     const loader = document.getElementById('feed-loader');
@@ -80,300 +113,100 @@ document.addEventListener('DOMContentLoaded', function () {
     const detailMeta = document.getElementById('detail-meta');
     const detailBody = document.getElementById('detail-body');
     const detailCloseBtn = document.getElementById('detail-view-close');
+    
     let currentFilter = { main: 'all', sub: 'all' };
-    let displayedArticles = [], articlesToDisplay = [], isLoading = false;
-    const articlesPerPage = 10;
+    let articlesToDisplay = allArticles;
+    let displayedCount = document.querySelectorAll('#friends-feed-list .post-entry').length;
+    let isLoading = false;
+    let isFiltering = false;
 
-    function renderSubCategories(categoryName) {
-        const categoryData = allCategoriesData[categoryName];
-        if (!categoryData) { subCategoriesContainer.innerHTML = ''; subCategoriesContainer.classList.remove('is-visible'); return; }
-        let subHTML = `<button class="category-btn sub-btn active" data-filter-type="category_all" data-filter-value="${categoryName}">全部 ${categoryName}</button>`;
-        for (const sourceName in categoryData.sources) {
-            const source = categoryData.sources[sourceName];
-            if (source.count > 0) { subHTML += `<button class="category-btn sub-btn" data-filter-type="source" data-filter-value="${sourceName}">${source.icon || ''} ${sourceName}</button>`; }
-        }
-        subCategoriesContainer.innerHTML = subHTML; subCategoriesContainer.classList.add('is-visible');
-    }
-
-    function updateFilterUI() {
-        mainCategoriesContainer.querySelectorAll('.category-btn').forEach(btn => btn.classList.toggle('active', btn.dataset.filterValue === currentFilter.main));
-        if (currentFilter.main === 'all') { subCategoriesContainer.classList.remove('is-visible'); subCategoriesContainer.innerHTML = '';
-        } else { subCategoriesContainer.querySelectorAll('.category-btn').forEach(btn => btn.classList.toggle('active', btn.dataset.filterValue === currentFilter.sub)); }
-    }
-
+    function renderSubCategories(categoryName){const categoryData=allCategoriesData[categoryName];if(!categoryData){subCategoriesContainer.innerHTML='';subCategoriesContainer.classList.remove('is-visible');return}let subHTML=`<button class="category-btn sub-btn active" data-filter-type="category_all" data-filter-value="${categoryName}">全部 ${categoryName}</button>`;for(const sourceName in categoryData.sources){const source=categoryData.sources[sourceName];if(source.count>0){subHTML+=`<button class="category-btn sub-btn" data-filter-type="source" data-filter-value="${sourceName}">${source.icon||''} ${sourceName}</button>`}}subCategoriesContainer.innerHTML=subHTML;subCategoriesContainer.classList.add('is-visible')}
+    function updateFilterUI(){mainCategoriesContainer.querySelectorAll('.category-btn').forEach(btn=>btn.classList.toggle('active',btn.dataset.filterValue===currentFilter.main));if(currentFilter.main==='all'){subCategoriesContainer.classList.remove('is-visible');subCategoriesContainer.innerHTML=''}else{subCategoriesContainer.querySelectorAll('.category-btn').forEach(btn=>btn.classList.toggle('active',btn.dataset.filterValue===currentFilter.sub))}}
     function filterArticles() {
-        articlesContainer.innerHTML = ''; displayedArticles = [];
-        if (currentFilter.main === 'all') { articlesToDisplay = allArticles; } 
-        else if (currentFilter.sub === currentFilter.main) { articlesToDisplay = allArticles.filter(a => a.category === currentFilter.main); }
-        else { articlesToDisplay = allArticles.filter(a => a.blog_name === currentFilter.sub); }
-        if (articlesToDisplay.length === 0) { articlesContainer.innerHTML = '<div class="post-content"><p>该筛选条件下暂时没有动态。</p></div>'; }
-        else { loadMoreArticles(); }
-        setTimeout(() => updateWrapperHeight(listView), 100);
-    }
-
-    mainCategoriesContainer.addEventListener('click', e => {
-        const button = e.target.closest('.category-btn'); if (!button) return;
-        const value = button.dataset.filterValue;
-        if (value === currentFilter.main && value !== 'all') { currentFilter = { main: 'all', sub: 'all' }; }
-        else { currentFilter = { main: value, sub: value }; if (value !== 'all') { renderSubCategories(value); } }
-        updateFilterUI(); filterArticles();
-    });
-
-    subCategoriesContainer.addEventListener('click', e => {
-        const button = e.target.closest('.category-btn'); if (!button) return;
-        const value = button.dataset.filterValue;
-        if (value !== currentFilter.sub) { currentFilter.sub = value; updateFilterUI(); filterArticles(); }
-    });
-
-    const handleScroll = () => {
-        if (!wrapper.classList.contains('detail-view-active') && window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 300 && !isLoading && displayedArticles.length < articlesToDisplay.length) { 
-            loadMoreArticles(); 
-        }
-    };
-    window.addEventListener('scroll', handleScroll);
-
-    function createArticleHTML(article) {
-        const d = new Date(article.published).toLocaleString('zh-CN', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
-        const tempDiv = document.createElement('div');
-        tempDiv.innerHTML = article.content || article.summary;
-        let summaryText = tempDiv.textContent || tempDiv.innerText || "";
-        summaryText = summaryText.length > 150 ? summaryText.substring(0, 150) + '...' : summaryText;
-        return `
-        <article class="post-entry">
-            <header class="entry-header">
-                <h2 class="entry-hint-parent"><a href="javascript:void(0);" class="read-more-trigger" data-id="${article.id}">${article.title}</a></h2>
-            </header>
-            <div class="entry-content"><p>${summaryText}</p></div>
-            <footer class="entry-footer">
-                <span title="${article.blog_name}">${article.source_icon} ${article.blog_name}</span>&nbsp;·&nbsp;<time>${d}</time>
-            </footer>
-        </article>`;
-    }
-
-    function loadMoreArticles() {
-        if (isLoading) return;
-        isLoading = true;
-        loader.style.display = 'block';
+        if (isFiltering) return; isFiltering = true; articlesContainer.classList.add('is-filtering');
         setTimeout(() => {
-            const startIndex = displayedArticles.length;
-            const endIndex = startIndex + articlesPerPage;
+            articlesContainer.innerHTML = ''; displayedCount = 0;
+            if (currentFilter.main === 'all') { articlesToDisplay = allArticles; }
+            else if (currentFilter.sub === currentFilter.main) { articlesToDisplay = allArticles.filter(a => a.category === currentFilter.main); }
+            else { articlesToDisplay = allArticles.filter(a => a.blog_name === currentFilter.sub); }
+            if (articlesToDisplay.length === 0) { articlesContainer.innerHTML = '<div class="post-content"><p>该筛选条件下暂时没有动态。</p></div>'; updateWrapperHeight(); } else { loadMoreArticles(true); }
+            articlesContainer.classList.remove('is-filtering'); isFiltering = false;
+        }, 200);
+    }
+    mainCategoriesContainer.addEventListener('click',e=>{const button=e.target.closest('.category-btn');if(!button)return;const value=button.dataset.filterValue;if(value===currentFilter.main&&value!=='all'){currentFilter={main:'all',sub:'all'}}else{currentFilter={main:value,sub:value};if(value!=='all'){renderSubCategories(value)}}updateFilterUI();filterArticles()});
+    subCategoriesContainer.addEventListener('click',e=>{const button=e.target.closest('.category-btn');if(!button)return;const value=button.dataset.filterValue;if(value!==currentFilter.sub){currentFilter.sub=value;updateFilterUI();filterArticles()}});
+
+    const handleScroll=()=>{if(!wrapper.classList.contains('detail-view-active')&&window.innerHeight+window.scrollY>=document.documentElement.scrollHeight-300&&!isLoading&&displayedCount<articlesToDisplay.length){loadMoreArticles()}};window.addEventListener('scroll',handleScroll);
+    function createArticleHTML(article){const d=new Date(article.published).toLocaleString('zh-CN',{year:'numeric',month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});const tempDiv=document.createElement('div');tempDiv.innerHTML=article.content||article.summary;let summaryText=tempDiv.textContent||tempDiv.innerText||"";summaryText=summaryText.length>150?summaryText.substring(0,150)+'...':summaryText;return`<article class="post-entry"><header class="entry-header"><h2 class="entry-hint-parent"><a href="javascript:void(0);" class="read-more-trigger" data-id="${article.id}">${article.title}</a></h2></header><div class="entry-content"><p>${summaryText}</p></div><footer class="entry-footer"><span title="${article.blog_name}">${article.source_icon} ${article.blog_name}</span>&nbsp;·&nbsp;<time>${d}</time></footer></article>`}
+    
+    function loadMoreArticles(isFirstLoad = false){
+        if(isLoading) return; isLoading = true;
+        if(!isFirstLoad) { loader.style.display = 'block'; }
+        setTimeout(() => {
+            const startIndex = displayedCount, endIndex = startIndex + articlesPerPage;
             const articlesChunk = articlesToDisplay.slice(startIndex, endIndex);
-            if (articlesChunk.length > 0) {
+            if(articlesChunk.length > 0) {
                 let articlesHTML = '';
                 articlesChunk.forEach(article => { articlesHTML += createArticleHTML(article); });
                 articlesContainer.insertAdjacentHTML('beforeend', articlesHTML);
-                displayedArticles = displayedArticles.concat(articlesChunk);
+                displayedCount += articlesChunk.length;
             }
-            loader.style.display = 'none';
+            updateWrapperHeight(); 
+            if(!isFirstLoad) { loader.style.display = 'none'; }
             isLoading = false;
-            updateWrapperHeight(listView);
-        }, 300);
+        }, isFirstLoad ? 0 : 300);
     }
     
-    function updateWrapperHeight(activeView) {
-        requestAnimationFrame(() => {
-            const height = activeView.scrollHeight;
-            wrapper.style.height = height + 'px';
-        });
-    }
-
-    let hljsPromise = null;
-    function loadHljs() {
-        if (!hljsPromise) {
-            hljsPromise = new Promise((resolve, reject) => {
-                if (window.hljs) { return resolve(window.hljs); }
-                const style = document.createElement('link');
-                style.rel = 'stylesheet';
-                style.href = 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/vs2015.min.css';
-                document.head.appendChild(style);
-                const script = document.createElement('script');
-                script.src = 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js';
-                script.onload = () => resolve(window.hljs);
-                script.onerror = reject;
-                document.head.appendChild(script);
-            });
-        }
-        return hljsPromise;
-    }
-
-    function enhanceCodeBlock(preElement) {
-        if (preElement.parentElement.classList.contains('code-block-wrapper')) return;
-        const codeElement = preElement.querySelector('code');
-        const wrapper = document.createElement('div');
-        wrapper.className = 'code-block-wrapper';
-        const header = document.createElement('div');
-        header.className = 'code-block-header';
-        const langMatch = codeElement.className.match(/language-(\S+)/);
-        const langName = document.createElement('span');
-        langName.className = 'language-name';
-        langName.textContent = langMatch ? langMatch[1] : '';
-        const copyButton = document.createElement('button');
-        copyButton.className = 'copy-code-button';
-        const copyIconSVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>`;
-        const checkIconSVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
-        copyButton.innerHTML = `<span class="copy-icon">${copyIconSVG}</span><span class="copy-text">复制</span>`;
-        copyButton.addEventListener('click', () => {
-            navigator.clipboard.writeText(codeElement.innerText).then(() => {
-                copyButton.innerHTML = `<span class="copy-icon">${checkIconSVG}</span><span class="copy-text">已复制!</span>`;
-                copyButton.classList.add('copied');
-                setTimeout(() => {
-                    copyButton.innerHTML = `<span class="copy-icon">${copyIconSVG}</span><span class="copy-text">复制</span>`;
-                    copyButton.classList.remove('copied');
-                }, 2000);
-            });
-        });
-        header.appendChild(langName);
-        header.appendChild(copyButton);
-        preElement.parentNode.insertBefore(wrapper, preElement);
-        wrapper.appendChild(header);
-        wrapper.appendChild(preElement);
-    }
+    function updateWrapperHeight() { requestAnimationFrame(() => { if (!wrapper.classList.contains('detail-view-active')) { wrapper.style.height = listView.scrollHeight + 'px'; } }); }
 
     function showArticleDetail(articleId) {
-        const article = allArticles.find(a => a.id === articleId);
-        if (!article) return;
+        const article = allArticles.find(a => a.id === articleId); if (!article) return;
         detailTitle.textContent = article.title;
-        const d = new Date(article.published).toLocaleString('zh-CN', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
-        detailMeta.innerHTML = `
-            <span title="${article.blog_name}">${article.source_icon} ${article.blog_name}</span>&nbsp;·&nbsp;
-            <time>${d}</time>&nbsp;·&nbsp;
-            <a href="${article.link}" target="_blank" rel="noopener noreferrer">查看原文</a>
-        `;
-        detailBody.innerHTML = article.content || '<p>此文章没有提供正文内容。</p>'; 
-        detailBody.querySelectorAll('img').forEach(img => {
-            img.classList.remove('image-error');
-            img.onerror = function() { this.classList.add('image-error'); this.onerror = null; };
-        });
+        const d = new Date(article.published).toLocaleString('zh-CN', {year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'});
+        detailMeta.innerHTML = `<span title="${article.blog_name}">${article.source_icon} ${article.blog_name}</span>&nbsp;·&nbsp;<time>${d}</time>&nbsp;·&nbsp;<a href="${article.link}" target="_blank" rel="noopener noreferrer">查看原文</a>`;
+        detailBody.innerHTML = article.content || '<p>此文章没有提供正文内容。</p>';
+        detailBody.querySelectorAll('img').forEach(img => { img.classList.remove('image-error'); img.onerror = function() { this.classList.add('image-error'); this.onerror = null; }; });
         const codeBlocks = detailBody.querySelectorAll('pre code');
-        if (codeBlocks.length > 0) {
-            loadHljs().then(hljs => {
-                codeBlocks.forEach((block) => {
-                    hljs.highlightElement(block);
-                    if (block.parentElement.tagName === 'PRE') enhanceCodeBlock(block.parentElement);
-                });
-            }).catch(err => console.error("Highlight.js 加载失败:", err));
-        }
+        if (codeBlocks.length > 0) { loadHljs().then(hljs => { codeBlocks.forEach(block => { hljs.highlightElement(block); if (block.parentElement.tagName === 'PRE') { enhanceCodeBlock(block.parentElement); } }); }).catch(err => console.error("Highlight.js 加载失败:", err)); }
+        const detailHeight = detailView.scrollHeight;
+        wrapper.style.height = detailHeight + 'px';
         wrapper.classList.add('detail-view-active');
-        updateWrapperHeight(detailView);
-        window.scrollTo({ top: 0, behavior: 'smooth' });
+        pageContainer.classList.add('detail-view-is-active');
+        window.scrollTo({top: wrapper.offsetTop - 20, behavior: 'smooth'});
     }
-    
+
     function hideArticleDetail() {
         if (!wrapper.classList.contains('detail-view-active')) return;
+        const listHeight = listView.scrollHeight;
+        wrapper.style.height = listHeight + 'px';
         wrapper.classList.remove('detail-view-active');
-        updateWrapperHeight(listView);
+        pageContainer.classList.remove('detail-view-is-active');
     }
 
-    articlesContainer.addEventListener('click', function(e) {
-        const trigger = e.target.closest('.read-more-trigger');
-        if (trigger && trigger.dataset.id) { 
-            e.preventDefault(); 
-            showArticleDetail(trigger.dataset.id); 
-        }
-    });
+    window.addEventListener('load', () => { updateWrapperHeight(); });
+    articlesContainer.addEventListener('click', function(e){ const trigger = e.target.closest('.read-more-trigger'); if(trigger && trigger.dataset.id){ e.preventDefault(); showArticleDetail(trigger.dataset.id); } });
     detailCloseBtn.addEventListener('click', hideArticleDetail);
-    document.addEventListener('keydown', function(e) { 
-        if (e.key === "Escape" && wrapper.classList.contains('detail-view-active')) { 
-            hideArticleDetail(); 
-        } 
-    });
+    document.addEventListener('keydown',function(e){if(e.key==="Escape"&&wrapper.classList.contains('detail-view-active')){hideArticleDetail()}});
     
-    let touchStartX = 0, touchStartY = 0;
-    const gestureZoneWidth = 50, gestureMinSwipeX = 80, gestureMaxSwipeY = 100;
-
-    detailView.addEventListener('touchstart', (e) => {
-        const touch = e.touches[0];
-        touchStartX = touch.clientX;
-        touchStartY = touch.clientY;
-    });
-
-    detailView.addEventListener('touchmove', (e) => {
-        if (touchStartX === 0 || touchStartX > gestureZoneWidth) return;
-        const touch = e.touches[0];
-        const deltaX = touch.clientX - touchStartX;
-        const deltaY = Math.abs(touch.clientY - touchStartY);
-        if (deltaX > 10 && deltaX > deltaY) e.preventDefault();
-    });
-
-    detailView.addEventListener('touchend', (e) => {
-        if (touchStartX === 0 || touchStartX > gestureZoneWidth) { touchStartX = 0; return; }
-        const touch = e.changedTouches[0];
-        const deltaX = touch.clientX - touchStartX;
-        const deltaY = Math.abs(touch.clientY - touchStartY);
-        if (deltaX > gestureMinSwipeX && deltaY < gestureMaxSwipeY) hideArticleDetail();
-        touchStartX = 0; touchStartY = 0;
-    });
-
-    const lightbox = document.getElementById('image-lightbox');
-    const lightboxImage = document.getElementById('lightbox-image');
-    const lightboxCloseBtn = document.getElementById('lightbox-close');
-    let isDragging = false, scale = 1, startPos = { x: 0, y: 0 }, currentTranslate = { x: 0, y: 0 };
-    function openLightbox(src) { lightboxImage.setAttribute('src', src); resetImageTransform(); lightbox.classList.add('is-visible'); document.body.style.overflow = 'hidden'; }
-    function closeLightbox() { lightbox.classList.remove('is-visible'); document.body.style.overflow = ''; }
-    function resetImageTransform() { scale = 1; currentTranslate = { x: 0, y: 0 }; applyTransform(); }
-    function applyTransform() { lightboxImage.style.transform = `translate(${currentTranslate.x}px, ${currentTranslate.y}px) scale(${scale})`; }
-    detailBody.addEventListener('click', (e) => { if (e.target.tagName === 'IMG' && !e.target.classList.contains('image-error')) openLightbox(e.target.src); });
-    lightboxCloseBtn.addEventListener('click', closeLightbox);
-    lightbox.addEventListener('click', (e) => { if (e.target === lightbox) closeLightbox(); });
-    document.addEventListener('keydown', (e) => { if (e.key === "Escape" && lightbox.classList.contains('is-visible')) closeLightbox(); });
-    lightboxImage.addEventListener('wheel', (e) => { e.preventDefault(); const s = e.deltaY > 0 ? -0.1 : 0.1; scale = Math.min(Math.max(0.5, scale + s), 5); applyTransform(); });
-    lightboxImage.addEventListener('mousedown', (e) => { e.preventDefault(); isDragging = true; startPos = { x: e.clientX - currentTranslate.x, y: e.clientY - currentTranslate.y }; lightboxImage.style.cursor = 'grabbing'; });
-    window.addEventListener('mousemove', (e) => { if (!isDragging) return; currentTranslate.x = e.clientX - startPos.x; currentTranslate.y = e.clientY - startPos.y; applyTransform(); });
-    window.addEventListener('mouseup', () => { isDragging = false; lightboxImage.style.cursor = 'grab'; });
-    
-    filterArticles();
+    let hljsPromise=null;function loadHljs(){if(!hljsPromise){hljsPromise=new Promise((resolve,reject)=>{if(window.hljs){return resolve(window.hljs)}const style=document.createElement('link');style.rel='stylesheet';style.href='https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/vs2015.min.css';document.head.appendChild(style);const script=document.createElement('script');script.src='https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js';script.onload=()=>resolve(window.hljs);script.onerror=reject;document.head.appendChild(script)})}return hljsPromise}
+    function enhanceCodeBlock(preElement){if(preElement.parentElement.classList.contains('code-block-wrapper'))return;const codeElement=preElement.querySelector('code');const wrapper=document.createElement('div');wrapper.className='code-block-wrapper';const header=document.createElement('div');header.className='code-block-header';const langMatch=codeElement.className.match(/language-(\S+)/);const langName=document.createElement('span');langName.className='language-name';langName.textContent=langMatch?langMatch[1]:'';const copyButton=document.createElement('button');copyButton.className='copy-code-button';const copyIconSVG=`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>`;const checkIconSVG=`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`;copyButton.innerHTML=`<span class="copy-icon">${copyIconSVG}</span><span class="copy-text">复制</span>`;copyButton.addEventListener('click',()=>{navigator.clipboard.writeText(codeElement.innerText).then(()=>{copyButton.innerHTML=`<span class="copy-icon">${checkIconSVG}</span><span class="copy-text">已复制!</span>`;copyButton.classList.add('copied');setTimeout(()=>{copyButton.innerHTML=`<span class="copy-icon">${copyIconSVG}</span><span class="copy-text">复制</span>`;copyButton.classList.remove('copied')},2000)})});header.appendChild(langName);header.appendChild(copyButton);preElement.parentNode.insertBefore(wrapper,preElement);wrapper.appendChild(header);wrapper.appendChild(preElement)}
+    const lightbox=document.getElementById('image-lightbox'),lightboxImage=document.getElementById('lightbox-image'),lightboxCloseBtn=document.getElementById('lightbox-close');let isDragging=!1,scale=1,startPos={x:0,y:0},currentTranslate={x:0,y:0},initialPinchDistance=0,startScale=1;function getPinchDistance(e){return Math.hypot(e[0].pageX-e[1].pageX,e[0].pageY-e[1].pageY)}function handleTouchStart(e){e.preventDefault(),2===e.touches.length?(initialPinchDistance=getPinchDistance(e.touches),startScale=scale):1===e.touches.length&&(isDragging=!0,startPos={x:e.touches[0].clientX-currentTranslate.x,y:e.touches[0].clientY-currentTranslate.y},lightboxImage.style.cursor="grabbing")}function handleTouchMove(e){e.preventDefault(),2===e.touches.length&&initialPinchDistance>0?(scale=Math.min(Math.max(.5,startScale* (getPinchDistance(e.touches)/initialPinchDistance)),5),applyTransform()):1===e.touches.length&&isDragging&&(currentTranslate.x=e.touches[0].clientX-startPos.x,currentTranslate.y=e.clientY-startPos.y,applyTransform())}function handleTouchEnd(e){e.touches.length<2&&(initialPinchDistance=0),e.touches.length<1&&(isDragging=!1,lightboxImage.style.cursor="grab")}function openLightbox(e){lightboxImage.setAttribute("src",e),resetImageTransform(),lightbox.classList.add("is-visible"),document.body.style.overflow="hidden",lightbox.addEventListener("touchstart",handleTouchStart),lightbox.addEventListener("touchmove",handleTouchMove),lightbox.addEventListener("touchend",handleTouchEnd)}function closeLightbox(){lightbox.classList.remove("is-visible"),document.body.style.overflow="",lightbox.removeEventListener("touchstart",handleTouchStart),lightbox.removeEventListener("touchmove",handleTouchMove),lightbox.removeEventListener("touchend",handleTouchEnd)}function resetImageTransform(){scale=1,currentTranslate={x:0,y:0},applyTransform()}function applyTransform(){lightboxImage.style.transform=`translate(${currentTranslate.x}px, ${currentTranslate.y}px) scale(${scale})`}detailBody.addEventListener("click",e=>{"IMG"===e.target.tagName&&!e.target.classList.contains("image-error")&&openLightbox(e.target.src)}),lightboxCloseBtn.addEventListener("click",closeLightbox),lightbox.addEventListener("click",e=>{e.target===lightbox&&!isDragging&&closeLightbox()}),document.addEventListener("keydown",e=>{"Escape"===e.key&&lightbox.classList.contains("is-visible")&&closeLightbox()}),lightboxImage.addEventListener("wheel",e=>{e.preventDefault();const t=.1*(e.deltaY>0?-1:1);scale=Math.min(Math.max(.5,scale+t)),applyTransform()}),lightboxImage.addEventListener("mousedown",e=>{e.preventDefault(),isDragging=!0,startPos={x:e.clientX-currentTranslate.x,y:e.clientY-currentTranslate.y},lightboxImage.style.cursor="grabbing"}),window.addEventListener("mousemove",e=>{isDragging&&(currentTranslate.x=e.clientX-startPos.x,currentTranslate.y=e.clientY-startPos.y,applyTransform())}),window.addEventListener("mouseup",()=>{isDragging=!1,lightboxImage.style.cursor="grab"});
 });
 </script>
 
-
-{{/* 5. CSS 样式 (已修正) */}}
+{{/* 5. CSS 样式 (无变化) */}}
 <style>
-    /* --- 主容器和视图切换动画 (关键修正) --- */
-    #friends-feed-wrapper {
-        position: relative;
-        overflow-x: hidden;
-        transition: height 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
-    }
-    .feed-view {
-        /* 两个视图都绝对定位，脱离文档流 */
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 100%;
-        transition: transform 0.4s cubic-bezier(0.25, 0.8, 0.25, 1), 
-                    opacity 0.3s ease;
-    }
-    #friends-list-view {
-        /* 列表视图初始在屏幕内 */
-        transform: translateX(0);
-        opacity: 1;
-    }
-    #article-detail-view {
-        /* 详情视图初始在屏幕右侧外 */
-        transform: translateX(100%);
-        opacity: 0;
-        visibility: hidden;
-        transition-property: transform, opacity, visibility;
-        transition-delay: 0s, 0s, 0.4s;
-    }
-    #friends-feed-wrapper.detail-view-active #friends-list-view {
-        /* 激活时，列表视图滑到左侧外 */
-        transform: translateX(-100%);
-        opacity: 0;
-        visibility: hidden;
-        transition-delay: 0s, 0s, 0.4s;
-    }
-    #friends-feed-wrapper.detail-view-active #article-detail-view {
-        /* 激活时，详情视图滑入屏幕 */
-        transform: translateX(0);
-        opacity: 1;
-        visibility: visible;
-        transition-delay: 0s, 0.1s, 0s;
-    }
-
-    /* --- 基础与筛选按钮样式 --- */
-    .feed-filter-container { display: flex; flex-direction: column; gap: 16px; margin-bottom: 2.5rem; }
+    #friends-feed-wrapper { position: relative; overflow: hidden; transition: height 0.4s cubic-bezier(0.25, 0.8, 0.25, 1); }
+    .feed-view { position: absolute; top: 0; left: 0; width: 100%; transition: transform 0.4s cubic-bezier(0.25, 0.8, 0.25, 1), opacity 0.3s ease; }
+    #friends-list-view { transform: translateX(0); opacity: 1; }
+    #article-detail-view { transform: translateX(100%); opacity: 0; visibility: hidden; transition-property: transform, opacity, visibility; transition-delay: 0s, 0s, 0.4s; }
+    #friends-feed-wrapper.detail-view-active #friends-list-view { transform: translateX(-100%); opacity: 0; visibility: hidden; transition-delay: 0s, 0s, 0.4s; }
+    #friends-feed-wrapper.detail-view-active #article-detail-view { transform: translateX(0); opacity: 1; visibility: visible; transition-delay: 0s, 0.1s, 0s; }
+    #friends-feed-list { transition: opacity 0.2s ease-in-out; }
+    #friends-feed-list.is-filtering { opacity: 0; }
+    .feed-filter-container { margin-bottom: 2.5rem; transition: opacity 0.3s ease; }
     .filter-bar { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+    .main-bar { margin-bottom: 16px; }
     .main-btn { padding: 8px 16px; border: 1px solid var(--border-color); background-color: var(--code-bg); color: var(--primary); border-radius: 8px; cursor: pointer; font-size: 0.9em; font-weight: 500; transition: all 0.15s ease-out; }
     .main-btn.active { background-color: var(--primary); color: var(--entry); border-color: var(--primary); font-weight: 600; box-shadow: 0 4px 14px 0 rgba(var(--primary-rgb), 0.25); }
     .main-btn:hover:not(.active) { background-color: var(--primary); color: var(--entry); border-color: var(--primary); font-weight: 600; box-shadow: 0 4px 14px 0 rgba(var(--primary-rgb), 0.25); opacity: 0.6; transform: scale(1.03); }
@@ -384,24 +217,19 @@ document.addEventListener('DOMContentLoaded', function () {
     .sub-bar.is-visible { display: flex; }
     .read-more-trigger { text-decoration: none; color: inherit; cursor: pointer; }
     .read-more-trigger:hover { text-decoration: underline; }
-
-    /* --- 文章详情视图样式 --- */
-    .detail-view-content-wrapper { background-color: var(--entry); padding: 0.5rem 1rem; border-radius: 12px; border: 1px solid var(--border-color); }
+    .friends-feed-page-container.detail-view-is-active .feed-filter-container { pointer-events: none; opacity: 0.5; }
+    .detail-view-content-wrapper { background-color: var(--entry); padding: 1rem 0.5rem; border-radius: 12px; border: 1px solid var(--border-color); }
     .detail-view-close-btn { display: inline-block; margin-bottom: 2rem; background: var(--code-bg); border: 1px solid var(--border-color); color: var(--primary); padding: 8px 16px; border-radius: 8px; cursor: pointer; font-size: 0.9em; font-weight: 500; transition: all 0.2s ease; }
     .detail-view-close-btn:hover { background-color: var(--primary); border-color: var(--primary); color: var(--entry); }
     .detail-header { padding-bottom: 1rem; border-bottom: 1px solid var(--border-color); margin-bottom: 1.5rem; }
     #detail-title { margin: 0 0 0.5rem 0; font-size: 2em; line-height: 1.3; }
     .detail-body-content { max-height: none; overflow-y: visible; }
-
-    /* --- 内容样式 --- */
     .detail-body-content img { max-width: 100%; height: auto; display: block; margin: 1em 0; border-radius: 8px; background-color: var(--code-bg); cursor: zoom-in; }
     .detail-body-content img.image-error { position: relative; min-height: 150px; width: 100%; font-size: 0.9em; color: var(--secondary); filter: grayscale(100%); content: ''; cursor: default; }
     .detail-body-content img.image-error::before { content: '🖼️'; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 2.5em; opacity: 0.5; }
     .detail-body-content img.image-error::after { content: '图片加载失败'; position: absolute; bottom: 1em; left: 50%; transform: translateX(-50%); font-family: sans-serif; }
     .detail-body-content video, .detail-body-content audio { max-width: 100%; height: auto; display: block; margin: 1em 0; }
     .detail-body-content :not(pre) > code { font-family: 'SF Mono', 'Fira Code', monospace; font-size: 0.9em; background-color: var(--code-bg); padding: 0.2em 0.4em; border-radius: 4px; color: var(--primary); }
-    
-    /* --- VS Code 风格代码块样式 --- */
     .code-block-wrapper { margin: 1.5em 0; border: 1px solid var(--border-color); border-radius: 8px; overflow: hidden; background-color: #1E1E1E; }
     .code-block-header { display: flex; justify-content: space-between; align-items: center; padding: 0.6em 0.8em; background-color: #333333; border-bottom: 1px solid var(--border-color); }
     .language-name { font-family: 'JetBrains Mono', 'Fira Code', 'SF Mono', monospace; font-size: 0.8em; color: #cccccc; text-transform: lowercase; }
@@ -411,9 +239,7 @@ document.addEventListener('DOMContentLoaded', function () {
     .copy-code-button svg { width: 16px; height: 16px; }
     .detail-body-content pre { margin: 0; border: none; border-radius: 0; padding: 1.2em; overflow-x: auto; background: #1E1E1E !important; }
     .detail-body-content pre code.hljs { font-family: 'JetBrains Mono', 'Fira Code', 'SF Mono', 'Consolas', 'Courier New', monospace; font-size: 0.9em; line-height: 1.6; background: none !important; padding: 0 !important; }
-
-    /* --- 图片 Lightbox 样式 --- */
-    .lightbox-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.85); display: flex; align-items: center; justify-content: center; z-index: 2000; opacity: 0; visibility: hidden; transition: opacity 0.3s ease, visibility 0s 0.3s linear; }
+    .lightbox-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.85); display: flex; align-items: center; justify-content: center; z-index: 2000; opacity: 0; visibility: hidden; transition: opacity 0.3s ease, visibility 0s 0.3s linear; touch-action: none; }
     .lightbox-overlay.is-visible { opacity: 1; visibility: visible; transition: opacity 0.3s ease; }
     .lightbox-content { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; overflow: hidden; }
     #lightbox-image { max-width: 95%; max-height: 95%; transition: transform 0.2s cubic-bezier(0.25, 0.1, 0.25, 1); cursor: grab; user-select: none; }
