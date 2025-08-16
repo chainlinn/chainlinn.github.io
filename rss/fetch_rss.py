@@ -80,8 +80,23 @@ MAX_ENTRIES_LIMIT = 200
 ENTRIES_PER_PAGE = 20
 FETCH_CONCURRENCY = 5  # 并发抓取线程数
 REQUEST_TIMEOUT = 15   # 网络请求超时时间（秒）
-USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
 
+# 模拟普通 Windows 10 上 Chrome 浏览器的请求头
+HEADERS = {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36',
+    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
+    'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
+    'Accept-Encoding': 'gzip, deflate, br',
+    'Connection': 'keep-alive',
+    'Upgrade-Insecure-Requests': '1',
+    # --- 新增/修改的头 ---
+    'Referer': 'https://tech.meituan.com/', # 伪造一个来源页
+    'DNT': '1', # Do Not Track
+    'Sec-Fetch-Dest': 'document',
+    'Sec-Fetch-Mode': 'navigate',
+    'Sec-Fetch-Site': 'same-origin',
+    'Sec-Fetch-User': '?1',
+}
 BALANCE_STRATEGIES = {"equal": "平均分配", "weighted": "按权重分配", "dynamic": "动态分配（基于活跃度）"}
 RSS_WEIGHTS = {"V2EX技术专区": 3, "美团技术团队": 3, "V2EX酷工作": 2, "潮流周刊": 2}
 
@@ -136,7 +151,7 @@ def sanitize_html(html_content: str) -> str:
 def fetch_full_content(url: str, selector: str) -> str:
     """抓取并解析网页，提取指定部分HTML"""
     try:
-        response = requests.get(url, headers={'User-Agent': USER_AGENT}, timeout=REQUEST_TIMEOUT)
+        response = requests.get(url, headers=HEADERS, timeout=REQUEST_TIMEOUT)
         response.raise_for_status()
         response.encoding = response.apparent_encoding # 自动检测编码
         soup = BeautifulSoup(response.text, 'lxml')
@@ -164,7 +179,7 @@ def fetch_and_process_feed(args) -> List[dict]:
     try:
         # 使用全局socket超时来控制feedparser的请求
         socket.setdefaulttimeout(REQUEST_TIMEOUT)
-        feed = feedparser.parse(feed_url, agent=USER_AGENT)
+        feed = feedparser.parse(feed_url, agent=HEADERS.get('User-Agent'))
         
         if feed.bozo:
             bozo_exception = feed.get('bozo_exception', '未知错误')
