@@ -1,15 +1,16 @@
 {{/*
     这个局部模板负责渲染朋友圈列表。
     功能：点击文章列表项，以从右侧滑入的动画在当前页面切换显示全文。
-    最终优化 (VS Code 风格 + 图片查看器):
+    最终优化 (VS Code 风格 + 相册级图片查看器):
     - 筛选器独立于滑动区域，始终可见。
     - [最终修复版] 筛选逻辑实现平滑、原地的淡入淡出内容切换，不滚动页面。
     - [最终修复版] 通过精确的高度动画管理，彻底根除视图切换时的布局跳动和滚动条闪现bug。
     - [最终修复版] 修复了滚动加载功能，并确保所有功能正常工作。
+    - [最终修复版] 图片查看器实现原生相册级的平滑、跟手缩放和拖动体验。
     - 页面全程仅使用浏览器主滚动条，任何内部元素都绝不产生自己的滚动条。
 */}}
 
-{{/* 1. 从 Hugo 数据文件中获取数据 (已修复) */}}
+{{/* 1. 从 Hugo 数据文件中获取数据 */}}
 {{ $feedData := index .Site.Data "friends_feed" }}
 {{ $articles := $feedData.articles }}
 {{ $categories := $feedData.meta.categories }}
@@ -91,23 +92,19 @@
 </div>
 
 
-{{/* 4. 核心 JavaScript 逻辑 (已修复所有问题) */}}
-{{/* 4. 核心 JavaScript 逻辑 (已修复所有问题) */}}
+{{/* 4. 核心 JavaScript 逻辑 (最终优化版) */}}
 <script>
 document.addEventListener('DOMContentLoaded', function () {
     // --- 朋友圈列表和文章详情的核心逻辑 (保持不变) ---
     const allArticles = {{ $articles | jsonify | safeJS }};
     const allCategoriesData = {{ $categories | jsonify | safeJS }};
     const articlesPerPage = {{ $articlesPerPage }};
-    
     const pageContainer = document.querySelector('.friends-feed-page-container');
     const wrapper = document.getElementById('friends-feed-wrapper');
     const listView = document.getElementById('friends-list-view');
     const articlesContainer = document.getElementById('friends-feed-list');
     const detailView = document.getElementById('article-detail-view');
-
     if (!Array.isArray(allArticles) || allArticles.length === 0) { return; }
-
     const mainCategoriesContainer = document.getElementById('feed-main-categories');
     const subCategoriesContainer = document.getElementById('feed-sub-categories');
     const loader = document.getElementById('feed-loader');
@@ -115,100 +112,39 @@ document.addEventListener('DOMContentLoaded', function () {
     const detailMeta = document.getElementById('detail-meta');
     const detailBody = document.getElementById('detail-body');
     const detailCloseBtn = document.getElementById('detail-view-close');
-    
     let currentFilter = { main: 'all', sub: 'all' };
     let articlesToDisplay = allArticles;
     let displayedCount = document.querySelectorAll('#friends-feed-list .post-entry').length;
-    let isLoading = false;
-    let isFiltering = false;
-
+    let isLoading = false; let isFiltering = false;
     function renderSubCategories(categoryName){const categoryData=allCategoriesData[categoryName];if(!categoryData){subCategoriesContainer.innerHTML='';subCategoriesContainer.classList.remove('is-visible');return}let subHTML=`<button class="category-btn sub-btn active" data-filter-type="category_all" data-filter-value="${categoryName}">全部 ${categoryName}</button>`;for(const sourceName in categoryData.sources){const source=categoryData.sources[sourceName];if(source.count>0){subHTML+=`<button class="category-btn sub-btn" data-filter-type="source" data-filter-value="${sourceName}">${source.icon||''} ${sourceName}</button>`}}subCategoriesContainer.innerHTML=subHTML;subCategoriesContainer.classList.add('is-visible')}
     function updateFilterUI(){mainCategoriesContainer.querySelectorAll('.category-btn').forEach(btn=>btn.classList.toggle('active',btn.dataset.filterValue===currentFilter.main));if(currentFilter.main==='all'){subCategoriesContainer.classList.remove('is-visible');subCategoriesContainer.innerHTML=''}else{subCategoriesContainer.querySelectorAll('.category-btn').forEach(btn=>btn.classList.toggle('active',btn.dataset.filterValue===currentFilter.sub))}}
-    function filterArticles() {
-        if (isFiltering) return; isFiltering = true; articlesContainer.classList.add('is-filtering');
-        setTimeout(() => {
-            articlesContainer.innerHTML = ''; displayedCount = 0;
-            if (currentFilter.main === 'all') { articlesToDisplay = allArticles; }
-            else if (currentFilter.sub === currentFilter.main) { articlesToDisplay = allArticles.filter(a => a.category === currentFilter.main); }
-            else { articlesToDisplay = allArticles.filter(a => a.blog_name === currentFilter.sub); }
-            if (articlesToDisplay.length === 0) { articlesContainer.innerHTML = '<div class="post-content"><p>该筛选条件下暂时没有动态。</p></div>'; updateWrapperHeight(); } else { loadMoreArticles(true); }
-            articlesContainer.classList.remove('is-filtering'); isFiltering = false;
-        }, 200);
-    }
+    function filterArticles() {if (isFiltering) return; isFiltering = true; articlesContainer.classList.add('is-filtering');setTimeout(() => {articlesContainer.innerHTML = ''; displayedCount = 0;if (currentFilter.main === 'all') { articlesToDisplay = allArticles; } else if (currentFilter.sub === currentFilter.main) { articlesToDisplay = allArticles.filter(a => a.category === currentFilter.main); } else { articlesToDisplay = allArticles.filter(a => a.blog_name === currentFilter.sub); } if (articlesToDisplay.length === 0) { articlesContainer.innerHTML = '<div class="post-content"><p>该筛选条件下暂时没有动态。</p></div>'; updateWrapperHeight(); } else { loadMoreArticles(true); } articlesContainer.classList.remove('is-filtering'); isFiltering = false;}, 200);}
     mainCategoriesContainer.addEventListener('click',e=>{const button=e.target.closest('.category-btn');if(!button)return;const value=button.dataset.filterValue;if(value===currentFilter.main&&value!=='all'){currentFilter={main:'all',sub:'all'}}else{currentFilter={main:value,sub:value};if(value!=='all'){renderSubCategories(value)}}updateFilterUI();filterArticles()});
     subCategoriesContainer.addEventListener('click',e=>{const button=e.target.closest('.category-btn');if(!button)return;const value=button.dataset.filterValue;if(value!==currentFilter.sub){currentFilter.sub=value;updateFilterUI();filterArticles()}});
-
     const handleScroll=()=>{if(!wrapper.classList.contains('detail-view-active')&&window.innerHeight+window.scrollY>=document.documentElement.scrollHeight-300&&!isLoading&&displayedCount<articlesToDisplay.length){loadMoreArticles()}};window.addEventListener('scroll',handleScroll);
     function createArticleHTML(article){const d=new Date(article.published).toLocaleString('zh-CN',{year:'numeric',month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});const tempDiv=document.createElement('div');tempDiv.innerHTML=article.content||article.summary;let summaryText=tempDiv.textContent||tempDiv.innerText||"";summaryText=summaryText.length>150?summaryText.substring(0,150)+'...':summaryText;return`<article class="post-entry"><header class="entry-header"><h2 class="entry-hint-parent"><a href="javascript:void(0);" class="read-more-trigger" data-id="${article.id}">${article.title}</a></h2></header><div class="entry-content"><p>${summaryText}</p></div><footer class="entry-footer"><span title="${article.blog_name}">${article.source_icon} ${article.blog_name}</span>&nbsp;·&nbsp;<time>${d}</time></footer></article>`}
-    
-    function loadMoreArticles(isFirstLoad = false){
-        if(isLoading) return; isLoading = true;
-        if(!isFirstLoad) { loader.style.display = 'block'; }
-        setTimeout(() => {
-            const startIndex = displayedCount, endIndex = startIndex + articlesPerPage;
-            const articlesChunk = articlesToDisplay.slice(startIndex, endIndex);
-            if(articlesChunk.length > 0) {
-                let articlesHTML = '';
-                articlesChunk.forEach(article => { articlesHTML += createArticleHTML(article); });
-                articlesContainer.insertAdjacentHTML('beforeend', articlesHTML);
-                displayedCount += articlesChunk.length;
-            }
-            updateWrapperHeight(); 
-            if(!isFirstLoad) { loader.style.display = 'none'; }
-            isLoading = false;
-        }, isFirstLoad ? 0 : 300);
-    }
-    
+    function loadMoreArticles(isFirstLoad = false){if(isLoading) return; isLoading = true;if(!isFirstLoad) { loader.style.display = 'block'; }setTimeout(() => {const startIndex = displayedCount, endIndex = startIndex + articlesPerPage;const articlesChunk = articlesToDisplay.slice(startIndex, endIndex);if(articlesChunk.length > 0) {let articlesHTML = '';articlesChunk.forEach(article => { articlesHTML += createArticleHTML(article); });articlesContainer.insertAdjacentHTML('beforeend', articlesHTML);displayedCount += articlesChunk.length;}updateWrapperHeight(); if(!isFirstLoad) { loader.style.display = 'none'; }isLoading = false;}, isFirstLoad ? 0 : 300);}
     function updateWrapperHeight() { requestAnimationFrame(() => { if (!wrapper.classList.contains('detail-view-active')) { wrapper.style.height = listView.scrollHeight + 'px'; } }); }
-
-    function showArticleDetail(articleId) {
-        const article = allArticles.find(a => a.id === articleId); if (!article) return;
-        detailTitle.textContent = article.title;
-        const d = new Date(article.published).toLocaleString('zh-CN', {year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'});
-        detailMeta.innerHTML = `<span title="${article.blog_name}">${article.source_icon} ${article.blog_name}</span>&nbsp;·&nbsp;<time>${d}</time>&nbsp;·&nbsp;<a href="${article.link}" target="_blank" rel="noopener noreferrer">查看原文</a>`;
-        detailBody.innerHTML = article.content || '<p>此文章没有提供正文内容。</p>';
-        detailBody.querySelectorAll('img').forEach(img => { img.classList.remove('image-error'); img.onerror = function() { this.classList.add('image-error'); this.onerror = null; }; });
-        const codeBlocks = detailBody.querySelectorAll('pre code');
-        if (codeBlocks.length > 0) { loadHljs().then(hljs => { codeBlocks.forEach(block => { hljs.highlightElement(block); if (block.parentElement.tagName === 'PRE') { enhanceCodeBlock(block.parentElement); } }); }).catch(err => console.error("Highlight.js 加载失败:", err)); }
-        const detailHeight = detailView.scrollHeight;
-        wrapper.style.height = detailHeight + 'px';
-        wrapper.classList.add('detail-view-active');
-        pageContainer.classList.add('detail-view-is-active');
-        window.scrollTo({top: wrapper.offsetTop - 20, behavior: 'smooth'});
-    }
-
-    function hideArticleDetail() {
-        if (!wrapper.classList.contains('detail-view-active')) return;
-        const listHeight = listView.scrollHeight;
-        wrapper.style.height = listHeight + 'px';
-        wrapper.classList.remove('detail-view-active');
-        pageContainer.classList.remove('detail-view-is-active');
-    }
-
+    function showArticleDetail(articleId) {const article = allArticles.find(a => a.id === articleId); if (!article) return;detailTitle.textContent = article.title;const d = new Date(article.published).toLocaleString('zh-CN', {year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'});detailMeta.innerHTML = `<span title="${article.blog_name}">${article.source_icon} ${article.blog_name}</span>&nbsp;·&nbsp;<time>${d}</time>&nbsp;·&nbsp;<a href="${article.link}" target="_blank" rel="noopener noreferrer">查看原文</a>`;detailBody.innerHTML = article.content || '<p>此文章没有提供正文内容。</p>';detailBody.querySelectorAll('img').forEach(img => { img.classList.remove('image-error'); img.onerror = function() { this.classList.add('image-error'); this.onerror = null; }; });const codeBlocks = detailBody.querySelectorAll('pre code');if (codeBlocks.length > 0) { loadHljs().then(hljs => { codeBlocks.forEach(block => { hljs.highlightElement(block); if (block.parentElement.tagName === 'PRE') { enhanceCodeBlock(block.parentElement); } }); }).catch(err => console.error("Highlight.js 加载失败:", err)); }const detailHeight = detailView.scrollHeight;wrapper.style.height = detailHeight + 'px';wrapper.classList.add('detail-view-active');pageContainer.classList.add('detail-view-is-active');window.scrollTo({top: wrapper.offsetTop - 20, behavior: 'smooth'});}
+    function hideArticleDetail() {if (!wrapper.classList.contains('detail-view-active')) return;const listHeight = listView.scrollHeight;wrapper.style.height = listHeight + 'px';wrapper.classList.remove('detail-view-active');pageContainer.classList.remove('detail-view-is-active');}
     window.addEventListener('load', () => { updateWrapperHeight(); });
     articlesContainer.addEventListener('click', function(e){ const trigger = e.target.closest('.read-more-trigger'); if(trigger && trigger.dataset.id){ e.preventDefault(); showArticleDetail(trigger.dataset.id); } });
     detailCloseBtn.addEventListener('click', hideArticleDetail);
     document.addEventListener('keydown',function(e){if(e.key==="Escape"&&wrapper.classList.contains('detail-view-active')){hideArticleDetail()}});
-    
     let hljsPromise=null;function loadHljs(){if(!hljsPromise){hljsPromise=new Promise((resolve,reject)=>{if(window.hljs){return resolve(window.hljs)}const style=document.createElement('link');style.rel='stylesheet';style.href='https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/vs2015.min.css';document.head.appendChild(style);const script=document.createElement('script');script.src='https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js';script.onload=()=>resolve(window.hljs);script.onerror=reject;document.head.appendChild(script)})}return hljsPromise}
     function enhanceCodeBlock(preElement){if(preElement.parentElement.classList.contains('code-block-wrapper'))return;const codeElement=preElement.querySelector('code');const wrapper=document.createElement('div');wrapper.className='code-block-wrapper';const header=document.createElement('div');header.className='code-block-header';const langMatch=codeElement.className.match(/language-(\S+)/);const langName=document.createElement('span');langName.className='language-name';langName.textContent=langMatch?langMatch[1]:'';const copyButton=document.createElement('button');copyButton.className='copy-code-button';const copyIconSVG=`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>`;const checkIconSVG=`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`;copyButton.innerHTML=`<span class="copy-icon">${copyIconSVG}</span><span class="copy-text">复制</span>`;copyButton.addEventListener('click',()=>{navigator.clipboard.writeText(codeElement.innerText).then(()=>{copyButton.innerHTML=`<span class="copy-icon">${checkIconSVG}</span><span class="copy-text">已复制!</span>`;copyButton.classList.add('copied');setTimeout(()=>{copyButton.innerHTML=`<span class="copy-icon">${copyIconSVG}</span><span class="copy-text">复制</span>`;copyButton.classList.remove('copied')},2000)})});header.appendChild(langName);header.appendChild(copyButton);preElement.parentNode.insertBefore(wrapper,preElement);wrapper.appendChild(header);wrapper.appendChild(preElement)}
 
-    // --- 开始：图片灯箱 (Lightbox) 功能 [重构修复版] ---
+    // --- 开始：图片灯箱 (Lightbox) 功能 [相册级体验优化版] ---
     const lightbox = document.getElementById('image-lightbox');
     const lightboxImage = document.getElementById('lightbox-image');
     const lightboxCloseBtn = document.getElementById('lightbox-close');
 
-    // 状态变量，用于跟踪拖动和缩放
-    let isDragging = false;
-    let scale = 1;
+    let scale = 1, lastScale = 1;
+    let currentTranslate = { x: 0, y: 0 }, startTranslate = { x: 0, y: 0 };
     let startPos = { x: 0, y: 0 };
-    let currentTranslate = { x: 0, y: 0 };
-    
-    // 触摸事件专用状态变量
+    let isDragging = false, isGesturing = false;
     let initialPinchDistance = 0;
-    let startScale = 1;
-
-    // --- 核心功能函数 ---
+    
     function openLightbox(src) {
         lightboxImage.setAttribute('src', src);
         resetImageTransform();
@@ -222,8 +158,9 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function resetImageTransform() {
-        scale = 1;
+        scale = 1; lastScale = 1;
         currentTranslate = { x: 0, y: 0 };
+        lightboxImage.classList.remove('is-gesturing');
         applyTransform();
     }
 
@@ -231,70 +168,71 @@ document.addEventListener('DOMContentLoaded', function () {
         lightboxImage.style.transform = `translate(${currentTranslate.x}px, ${currentTranslate.y}px) scale(${scale})`;
     }
 
-    // --- 触摸事件处理 ---
-    function getPinchDistance(touches) {
-        return Math.hypot(touches[0].pageX - touches[1].pageX, touches[0].pageY - touches[1].pageY);
-    }
+    // --- 触摸事件处理 (核心优化区) ---
+    function getPinchDistance(touches) { return Math.hypot(touches[0].pageX - touches[1].pageX, touches[0].pageY - touches[1].pageY); }
+    function getPinchCenter(touches) { return { x: (touches[0].pageX + touches[1].pageX) / 2, y: (touches[0].pageY + touches[1].pageY) / 2 }; }
 
     function handleTouchStart(e) {
-        // [修复] 如果事件目标是关闭按钮，则不执行任何操作，允许其默认的点击行为
         if (e.target === lightboxCloseBtn) return;
+        e.preventDefault();
         
-        e.preventDefault(); // 只在非关闭按钮上阻止默认行为（如页面滚动）
+        isGesturing = true;
+        lightboxImage.classList.add('is-gesturing');
 
-        if (e.touches.length === 2) { // 双指缩放开始
-            isDragging = false; // 确保单指拖动停止
+        if (e.touches.length === 2) { // 双指
+            isDragging = false;
             initialPinchDistance = getPinchDistance(e.touches);
-            startScale = scale;
-        } else if (e.touches.length === 1) { // 单指拖动开始
+            lastScale = scale;
+            startTranslate = { ...currentTranslate };
+        } else if (e.touches.length === 1) { // 单指
             isDragging = true;
-            startPos = {
-                x: e.touches[0].clientX - currentTranslate.x,
-                y: e.touches[0].clientY - currentTranslate.y
-            };
-            lightboxImage.style.cursor = 'grabbing';
+            startPos = { x: e.touches[0].clientX - currentTranslate.x, y: e.touches[0].clientY - currentTranslate.y };
         }
     }
 
     function handleTouchMove(e) {
+        if (!isGesturing) return;
         e.preventDefault();
-        
-        if (e.touches.length === 2 && initialPinchDistance > 0) { // 双指缩放中
+
+        if (e.touches.length === 2 && initialPinchDistance > 0) { // 双指缩放
             const currentPinchDistance = getPinchDistance(e.touches);
-            const newScale = startScale * (currentPinchDistance / initialPinchDistance);
-            scale = Math.min(Math.max(0.5, newScale), 5); // 限制缩放范围
+            const scaleRatio = currentPinchDistance / initialPinchDistance;
+            const newScale = lastScale * scaleRatio;
+            scale = Math.max(0.5, Math.min(newScale, 5)); // 限制缩放
+
+            const pinchCenter = getPinchCenter(e.touches);
+            currentTranslate.x = pinchCenter.x - (scale / lastScale) * (pinchCenter.x - startTranslate.x);
+            currentTranslate.y = pinchCenter.y - (scale / lastScale) * (pinchCenter.y - startTranslate.y);
+
             applyTransform();
-        } else if (e.touches.length === 1 && isDragging) { // 单指拖动中
+
+        } else if (e.touches.length === 1 && isDragging) { // 单指拖动
             currentTranslate.x = e.touches[0].clientX - startPos.x;
-            // [修复] 移动端拖动：使用 e.touches[0].clientY 而不是 e.clientY
             currentTranslate.y = e.touches[0].clientY - startPos.y;
             applyTransform();
         }
     }
 
     function handleTouchEnd(e) {
-        // 当手指离开时，重置状态
-        if (e.touches.length < 2) {
-            initialPinchDistance = 0; // 结束缩放
-        }
-        if (e.touches.length < 1) {
-            isDragging = false; // 结束拖动
-            lightboxImage.style.cursor = 'grab';
+        if (e.touches.length === 0) {
+            isGesturing = false;
+            isDragging = false;
+            lightboxImage.classList.remove('is-gesturing');
+            lastScale = scale;
+        } else if (e.touches.length === 1) { // 从双指变为单指，重置拖动起始点
+             isDragging = true;
+             startPos = { x: e.touches[0].clientX - currentTranslate.x, y: e.touches[0].clientY - currentTranslate.y };
         }
     }
 
     // --- 鼠标事件处理 ---
     function handleMouseDown(e) {
-        // [修复] 如果事件目标不是图片本身，则不启动拖动
         if (e.target !== lightboxImage) return;
-
         e.preventDefault();
         isDragging = true;
-        startPos = {
-            x: e.clientX - currentTranslate.x,
-            y: e.clientY - currentTranslate.y
-        };
+        startPos = { x: e.clientX - currentTranslate.x, y: e.clientY - currentTranslate.y };
         lightboxImage.style.cursor = 'grabbing';
+        lightboxImage.classList.add('is-gesturing');
     }
 
     function handleMouseMove(e) {
@@ -305,15 +243,20 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function handleMouseUp() {
+        if (!isDragging) return;
         isDragging = false;
         lightboxImage.style.cursor = 'grab';
+        lightboxImage.classList.remove('is-gesturing');
     }
     
     function handleWheel(e) {
         e.preventDefault();
+        lightboxImage.classList.add('is-gesturing');
         const scaleAmount = e.deltaY > 0 ? -0.1 : 0.1;
-        scale = Math.min(Math.max(0.5, scale + scaleAmount), 5); // 限制缩放范围
+        scale = Math.min(Math.max(0.5, scale + scaleAmount), 5);
         applyTransform();
+        // 使用 setTimeout 模拟手势结束，重新启用动画
+        setTimeout(() => lightboxImage.classList.remove('is-gesturing'), 200);
     }
 
     // --- 事件监听器绑定 ---
@@ -323,26 +266,14 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
-    // 关闭事件
     lightboxCloseBtn.addEventListener('click', closeLightbox);
-    lightbox.addEventListener('click', e => {
-        // [修复] 只有当点击的是背景遮罩层本身时才关闭
-        if (e.target === lightbox) {
-            closeLightbox();
-        }
-    });
-    document.addEventListener('keydown', e => {
-        if (e.key === 'Escape' && lightbox.classList.contains('is-visible')) {
-            closeLightbox();
-        }
-    });
+    lightbox.addEventListener('click', e => { if (e.target === lightbox) closeLightbox(); });
+    document.addEventListener('keydown', e => { if (e.key === 'Escape' && lightbox.classList.contains('is-visible')) closeLightbox(); });
 
-    // 绑定触摸事件，使用 { passive: false } 来允许 preventDefault
     lightbox.addEventListener('touchstart', handleTouchStart, { passive: false });
     lightbox.addEventListener('touchmove', handleTouchMove, { passive: false });
     lightbox.addEventListener('touchend', handleTouchEnd);
 
-    // 绑定鼠标事件
     lightbox.addEventListener('mousedown', handleMouseDown);
     window.addEventListener('mousemove', handleMouseMove);
     window.addEventListener('mouseup', handleMouseUp);
@@ -351,7 +282,8 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 </script>
 
-{{/* 5. CSS 样式 (无变化) */}}
+
+{{/* 5. CSS 样式 (已包含相册级体验优化) */}}
 <style>
     #friends-feed-wrapper { position: relative; overflow: hidden; transition: height 0.4s cubic-bezier(0.25, 0.8, 0.25, 1); }
     .feed-view { position: absolute; top: 0; left: 0; width: 100%; transition: transform 0.4s cubic-bezier(0.25, 0.8, 0.25, 1), opacity 0.3s ease; }
@@ -400,6 +332,8 @@ document.addEventListener('DOMContentLoaded', function () {
     .lightbox-overlay.is-visible { opacity: 1; visibility: visible; transition: opacity 0.3s ease; }
     .lightbox-content { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; overflow: hidden; }
     #lightbox-image { max-width: 95%; max-height: 95%; transition: transform 0.2s cubic-bezier(0.25, 0.1, 0.25, 1); cursor: grab; user-select: none; }
+    /* 当用户手指正在操作图片时，禁用过渡，实现实时响应 */
+    #lightbox-image.is-gesturing { transition: none; }
     #lightbox-image:active { cursor: grabbing; }
     .lightbox-close-btn { position: absolute; top: 20px; right: 20px; background: none; border: none; font-size: 2.5rem; color: rgba(255, 255, 255, 0.8); cursor: pointer; transition: color 0.2s ease, transform 0.2s ease; }
     .lightbox-close-btn:hover { color: #fff; transform: scale(1.1); }
