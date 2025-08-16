@@ -4,8 +4,7 @@
   */}}
   {{ define "main" }}
   
-  <main class="main">
-      <header class="page-header">
+    <header class="page-header">
           {{- partial "breadcrumbs.html" . }}
           <h1>{{ .Title }}</h1>
           {{- if .Description }}
@@ -23,7 +22,5 @@
       
       {{/* 关键！在这里调用我们的列表渲染组件 */}}
       {{ partial "rss_layout.html" . }}
-  
-  </main>
   
   {{ end }}
