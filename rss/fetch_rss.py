@@ -16,8 +16,19 @@ import requests
 from bs4 import BeautifulSoup
 import bleach
 
-
 # --- 1. 全局配置 ---
+
+# <<< NEW: 增加解析器自动选择逻辑，提高代码健壮性 >>>
+try:
+    import lxml
+    HTML_PARSER = 'lxml'
+except ImportError:
+    HTML_PARSER = 'html.parser'
+    print("-------------------------------------------------------------------", file=sys.stderr)
+    print("!!! 警告: 未找到 'lxml' 库，已回退到速度较慢的 'html.parser'。", file=sys.stderr)
+    print("!!! 为获得最佳性能，请在 requirements.txt 中添加 lxml 并重新安装依赖。", file=sys.stderr)
+    print("-------------------------------------------------------------------", file=sys.stderr)
+
 
 # -- 独立的大类配置 --
 CATEGORIES = {
@@ -131,7 +142,8 @@ def fetch_full_content(url: str, selector: str) -> str:
         response = requests.get(url, headers=HEADERS, timeout=REQUEST_TIMEOUT)
         response.raise_for_status()
         response.encoding = response.apparent_encoding
-        soup = BeautifulSoup(response.text, 'lxml')
+        # <<< MODIFIED: 使用全局变量选择解析器 >>>
+        soup = BeautifulSoup(response.text, HTML_PARSER)
         content_element = soup.select_one(selector)
         if content_element:
             return str(content_element)
@@ -141,17 +153,11 @@ def fetch_full_content(url: str, selector: str) -> str:
         print(f"    -> 解析全文失败: {url}, 错误: {e}")
     return ""
 
-# --- 新增: ShowDoc 推送函数 ---
 def send_showdoc_notification(url: str, title: str, content: str):
-    """
-    发送通知到 ShowDoc 推送服务。
-    """
+    """发送通知到 ShowDoc 推送服务。"""
     print("\n--- 6. 正在发送 ShowDoc 推送... ---")
     try:
-        payload = {
-            "title": title,
-            "content": content
-        }
+        payload = { "title": title, "content": content }
         response = requests.post(url, data=payload, timeout=10)
         response.raise_for_status()
         response_json = response.json()
@@ -166,58 +172,39 @@ def send_showdoc_notification(url: str, title: str, content: str):
     except Exception as e:
         print(f"❌ ShowDoc 推送时发生未知错误: {e}")
 
-
 # --- 3. 核心抓取与处理逻辑 ---
 def fetch_and_process_feed(args) -> List[dict]:
-    # ... (此函数内容不变)
-    """抓取并处理单个RSS源（设计为可并发调用）"""
     blog_name, feed_config, max_entries = args
     entries = []
     feed_url = feed_config["url"]
-    
     print(f"  处理中: {blog_name} (配额: {max_entries})")
-    
     try:
-        # 使用全局socket超时来控制feedparser的请求
         socket.setdefaulttimeout(REQUEST_TIMEOUT)
         feed = feedparser.parse(feed_url, agent=HEADERS.get('User-Agent'))
-        
         if feed.bozo:
             bozo_exception = feed.get('bozo_exception', '未知错误')
             print(f"    -> 警告: '{blog_name}' RSS 源格式不正确。错误: {bozo_exception}")
-
-        # 按发布日期排序
         feed_entries = sorted(feed.entries, key=lambda x: parse_date(x.get("published", x.get("updated", ""))), reverse=True)
-        
         for entry in feed_entries[:max_entries]:
             published_str = entry.get("published", entry.get("updated"))
             if not published_str: continue
-            
             dt_object = parse_date(published_str)
             summary_html = entry.get("summary", entry.get("description", ""))
-
-            summary = ""
-            content = ""
-
+            summary, content = "", ""
             if feed_config.get("fetch_full_content") and feed_config.get("content_selector"):
                 content_html = fetch_full_content(entry.link, feed_config["content_selector"])
                 if content_html:
                     content = sanitize_html(content_html)
-            
             if feed_config.get("sanitize_summary", False):
                 summary = sanitize_html(summary_html)
             else:
                 summary = re.sub(r'<[^>]+>', '', summary_html).strip()[:200]
-            
             if not content and feed_config.get("sanitize_summary", False):
                 content = summary
-
             author = entry.get("author", "未知")
             tags = [tag.get('term') for tag in entry.get("tags", [])]
-            
             entries.append({
-                "id": generate_entry_id(entry.link),
-                "blog_name": blog_name, "title": entry.title, "link": entry.link,
+                "id": generate_entry_id(entry.link), "blog_name": blog_name, "title": entry.title, "link": entry.link,
                 "published": dt_object.isoformat(), "timestamp": int(dt_object.timestamp()),
                 "summary": summary, "content": content, "author": author, "tags": tags,
                 "category": feed_config.get("category", "其他"),
@@ -229,7 +216,6 @@ def fetch_and_process_feed(args) -> List[dict]:
     return entries
 
 # --- 4. 分配策略函数 ---
-# ... (此部分函数内容不变)
 def calculate_equal_allocation(feed_count: int, total_limit: int) -> Dict[str, int]:
     if feed_count == 0: return {}
     base = total_limit // feed_count
@@ -251,10 +237,8 @@ def calculate_dynamic_allocation(existing_entries: List[dict], total_limit: int)
         if entry.get("blog_name") in counts: counts[entry["blog_name"]] += 1
     total = sum(counts.values())
     if total == 0: return calculate_equal_allocation(len(RSS_FEEDS), total_limit)
-    
     ratios = {name: count / total for name, count in counts.items()}
     allocation = {name: max(1, int(ratio * total_limit)) for name, ratio in ratios.items()}
-    
     current_total = sum(allocation.values())
     while current_total < total_limit:
         max_ratio_feed = max(ratios, key=ratios.get)
@@ -269,11 +253,8 @@ def get_allocation_strategy(existing_entries: List[dict], strategy: str) -> Dict
     return calculate_dynamic_allocation(existing_entries, MAX_ENTRIES_LIMIT)
 
 # --- 5. 主函数 ---
-
 def main(strategy: str):
     output_path = get_output_path()
-    
-    # 步骤 1: 读取历史数据
     print("--- 1. 正在读取历史数据... ---")
     existing_entries = []
     if os.path.exists(output_path):
@@ -284,73 +265,46 @@ def main(strategy: str):
             print(f"成功加载 {len(existing_entries)} 条历史文章。")
         except (json.JSONDecodeError, IOError) as e:
             print(f"警告: 读取或解析旧数据文件失败: {e}")
-
-    # 步骤 2: 计算分配策略
     print(f"\n--- 2. 计算负载均衡分配 (策略: {BALANCE_STRATEGIES.get(strategy, strategy)}) ---")
     allocation = get_allocation_strategy(existing_entries, strategy)
     print("分配结果:")
     for name, count in allocation.items(): print(f"  {name}: {count} 篇")
-    
-    # 步骤 3: 并发抓取新数据
     print(f"\n--- 3. 正在并发抓取RSS feeds (并发数: {FETCH_CONCURRENCY})... ---")
     all_new_entries = []
     tasks = [(name, config, allocation.get(name, 0)) for name, config in RSS_FEEDS.items() if allocation.get(name, 0) > 0]
-    
     with ThreadPoolExecutor(max_workers=FETCH_CONCURRENCY) as executor:
         results = executor.map(fetch_and_process_feed, tasks)
         for result in results:
             all_new_entries.extend(result)
-            
     print(f"抓取完成，共获得 {len(all_new_entries)} 篇文章。")
-    
-    # 步骤 4: 合并与去重
     print("\n--- 4. 去重与合并... ---")
     combined_entries = {e['link']: e for e in existing_entries}
     new_count = 0
-    new_articles_details = [] # 用于推送更详细的内容
+    new_articles_details = []
     for entry in all_new_entries:
         if entry['link'] not in combined_entries:
             new_count += 1
             new_articles_details.append(f"- {entry['blog_name']}: {entry['title']}")
         combined_entries[entry['link']] = entry
-
     final_entries = sorted(combined_entries.values(), key=lambda x: x.get('timestamp', 0), reverse=True)[:MAX_ENTRIES_LIMIT]
     print(f"新增 {new_count} 篇文章，去重和截断后，最终共 {len(final_entries)} 篇。")
-    
-    # 步骤 5: 生成元数据
-    # ... (此部分内容不变)
-    categories_meta = {name: {"icon": conf.get("icon", "📁"), "color": conf.get("color", "#666"), "count": 0, "sources": {}}
-                       for name, conf in CATEGORIES.items()}
+    categories_meta = {name: {"icon": conf.get("icon", "📁"), "color": conf.get("color", "#666"), "count": 0, "sources": {}} for name, conf in CATEGORIES.items()}
     source_counts = {name: 0 for name in RSS_FEEDS.keys()}
     for entry in final_entries:
         if entry.get('blog_name') in source_counts:
             source_counts[entry['blog_name']] += 1
-    
     for src_name, src_config in RSS_FEEDS.items():
         cat_name = src_config.get('category')
         if cat_name in categories_meta:
             count = source_counts.get(src_name, 0)
-            categories_meta[cat_name]['sources'][src_name] = {
-                "icon": src_config.get("icon", "📄"), "color": src_config.get("color", "#888"),
-                "description": src_config.get("description", ""), "count": count
-            }
+            categories_meta[cat_name]['sources'][src_name] = {"icon": src_config.get("icon", "📄"), "color": src_config.get("color", "#888"), "description": src_config.get("description", ""), "count": count}
             categories_meta[cat_name]['count'] += count
-
-    output_data = {
-        "meta": {
-            "total_articles": len(final_entries), "last_updated": datetime.now(timezone.utc).isoformat(),
-            "entries_per_page": ENTRIES_PER_PAGE, "categories": categories_meta
-        },
-        "articles": final_entries
-    }
-    
-    # 步骤 6: 写入文件
+    output_data = {"meta": {"total_articles": len(final_entries), "last_updated": datetime.now(timezone.utc).isoformat(), "entries_per_page": ENTRIES_PER_PAGE, "categories": categories_meta}, "articles": final_entries}
     print("\n--- 5. 保存到文件... ---")
     try:
         with open(output_path, "w", encoding="utf-8") as f:
             json.dump(output_data, f, ensure_ascii=False, indent=2)
         print(f"成功！数据已保存到: {output_path}")
-        
         print("\n--- 最终统计 ---")
         for cat, info in categories_meta.items():
             if info['count'] > 0:
@@ -360,19 +314,14 @@ def main(strategy: str):
                         print(f"    - {s_info['icon']} {src}: {s_info['count']} 篇")
     except IOError as e:
         print(f"错误！无法写入文件: {e}")
-
-    # --- 步骤 7 (修改): 发送推送通知 ---
     if new_count > 0:
         push_url = os.environ.get("SHOWDOC_PUSH_URL")
         if push_url:
             title = f"📚 RSS源更新：发现 {new_count} 篇新文章！"
-            # 将新文章列表格式化为Markdown
             content = "#### 本次更新内容：\n" + "\n".join(new_articles_details)
             send_showdoc_notification(push_url, title, content)
         else:
             print("\n未配置 SHOWDOC_PUSH_URL 环境变量，跳过推送。")
-
-    # --- 步骤 8 (新增): 向 GitHub Actions 输出结果 (可选，用于其他步骤) ---
     print("\n--- 7. 向 GitHub Actions 输出结果... ---")
     if os.environ.get("GITHUB_ACTIONS") == "true":
         output_file = os.environ.get("GITHUB_OUTPUT")
@@ -388,14 +337,11 @@ def main(strategy: str):
     else:
         print("不在 GitHub Actions 环境中，跳过输出。")
 
-
 # --- 脚本执行入口 ---
 if __name__ == "__main__":
     strategy_arg = "dynamic"
     if len(sys.argv) > 1 and sys.argv[1] in BALANCE_STRATEGIES:
         strategy_arg = sys.argv[1]
-    
     print(f"使用负载均衡策略: {BALANCE_STRATEGIES.get(strategy_arg, '未知')}")
     print("=" * 60)
-    
     main(strategy_arg)
