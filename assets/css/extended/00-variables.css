@@ -1,0 +1,23 @@
+/* === Notion 风格 === */
+
+/* 亮色 — 打字机棕灰 + 纯白底 */
+:root {
+    --primary: #37352f;
+    --secondary: #9b9a97;
+    --tertiary: #e9e9e7;
+    --theme: #ffffff;
+    --entry: #ffffff;
+    --border: #e9e9e7;
+    --content: #37352f;
+}
+
+/* 暗色 — GitHub Dark */
+:root[data-theme="dark"] {
+    --primary: #e6edf3;
+    --secondary: #8b949e;
+    --tertiary: #30363d;
+    --theme: #0d1117;
+    --entry: #161b22;
+    --border: #30363d;
+    --content: #e6edf3;
+}
