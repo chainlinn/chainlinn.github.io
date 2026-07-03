@@ -1,0 +1,11 @@
+{{- if .Params.comments | default site.Params.comments }}
+<div class="post-comments">
+  <script src="https://utteranc.es/client.js"
+          repo="chainlinn/chainlinn.github.io"
+          issue-term="pathname"
+          theme="preferred-color-scheme"
+          crossorigin="anonymous"
+          async>
+  </script>
+</div>
+{{- end }}

@@ -1,0 +1,2 @@
+{{- $rulerJs := resources.Get "js/toc-ruler.js" | resources.Minify -}}
+<script src="{{ $rulerJs.RelPermalink }}" defer></script>

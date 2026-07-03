@@ -51,6 +51,7 @@ TocOpen = true
 ShowWordCount = true
 ShowShareButtons = false
 ShowRssButtonInSectionTermList = true
+comments = true
 
 # 日期格式
 DateFormat = "2006-01-02"
