@@ -104,9 +104,14 @@ url = "/tags/"
 weight = 4
 
 [[menus.main]]
+name = "收录"
+url = "/links/"
+weight = 5
+
+[[menus.main]]
 name = "搜索"
 url = "/search/"
-weight = 5
+weight = 6
 
 # ============================================
 # 社交图标
@@ -118,6 +123,13 @@ url = "https://github.com/chainlinn"
 [[params.socialIcons]]
 name = "email"
 url = "mailto:santuchuan23@gmail.com"
+
+# ============================================
+# 安全策略（允许 shortcode 抓取外部 OGP 信息）
+# ============================================
+[security.http]
+methods = ['(?i)GET']
+urls = ['.*']
 
 # ============================================
 # Markdown 渲染
