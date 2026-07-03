@@ -6,7 +6,6 @@ tags: ["Docker", "网络", "代理"]
 categories: ["技术"]
 series: ["Docker 实践"]
 summary: "转载一篇关于 Docker 三种场景下代理配置的详细教程：Dockerd 代理、Container 代理、Docker Build 代理。"
-canonicalURL: "https://www.cnblogs.com/Chary/p/18096678"
 ---
 
 > 本文转载自 [博客园 charygao1990](https://www.cnblogs.com/Chary/p/18096678)，仅作学习备忘之用。
