@@ -2,9 +2,28 @@
 <article class="first-entry home-info">
     <header class="entry-header">
         <h1 style="display: flex; align-items: flex-end; gap: 12px;">
-            <span>{{ .Title | markdownify }}</span>
+            <span><span id="typewriter-text"></span><span class="typewriter-cursor">|</span></span>
             <img src="/dev0.gif" alt="dev0" style="height: 1.5em; width: auto; object-fit: contain;">
         </h1>
+<style>
+.typewriter-cursor { animation: blink 1s step-end infinite; color: var(--primary); }
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+</style>
+<script>
+(function() {
+    var text = '{{ .Title }}';
+    var el = document.getElementById('typewriter-text');
+    var i = 0;
+    function type() {
+        if (i < text.length) {
+            el.textContent += text.charAt(i);
+            i++;
+            setTimeout(type, 100 + Math.random() * 80);
+        }
+    }
+    type();
+})();
+</script>
     </header>
     <div class="entry-content md-content">
         {{ $opts := dict "display" "block" }}
