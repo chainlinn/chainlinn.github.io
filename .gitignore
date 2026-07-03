@@ -1,0 +1,12 @@
+# Hugo output directory
+public/
+
+# Hugo build lock
+.hugo_build.lock
+
+# macOS
+.DS_Store
+
+# IDE
+.vscode/
+.idea/

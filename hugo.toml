@@ -1,0 +1,124 @@
+# ============================================
+# 基础信息
+# ============================================
+baseURL = 'https://devs0.com/'
+locale = 'zh-cn'
+title = 'dev0'
+theme = 'PaperMod'
+
+paginate = 10
+enableGitInfo = true
+buildFuture = true
+enableRobotsTXT = true
+
+# ============================================
+# 分类法
+# ============================================
+[taxonomies]
+category = "categories"
+tag = "tags"
+series = "series"
+
+# ============================================
+# 输出格式（搜索需要 JSON）
+# ============================================
+[outputs]
+home = ["HTML", "RSS", "JSON"]
+
+# ============================================
+# Front Matter 策略
+# ============================================
+[frontmatter]
+date = ['date', ':git']
+lastmod = [':git']
+
+# ============================================
+# 站点参数
+# ============================================
+[params]
+env = "production"
+description = "技术博客与思考"
+author = "dev0"
+defaultTheme = "auto"
+
+# 显示开关
+ShowReadingTime = true
+ShowPostNavLinks = true
+ShowBreadCrumbs = true
+ShowCodeCopyButtons = true
+ShowToc = true
+TocOpen = true
+ShowWordCount = true
+ShowShareButtons = false
+ShowRssButtonInSectionTermList = true
+
+# 日期格式
+DateFormat = "2006-01-02"
+
+# 分享按钮
+ShareButtons = ["x", "linkedin", "telegram"]
+
+# 主要内容区（归档页会聚合这些 Section）
+mainSections = ["posts"]
+
+# ============================================
+# 首页欢迎信息（Home-Info 模式）
+# ============================================
+[params.homeInfoParams]
+Title = "不以物喜，不以己悲"
+Content = "欢迎来到 dev0 的博客"
+
+# ============================================
+# 封面图
+# ============================================
+[params.cover]
+linkFullImages = true
+
+# 编辑链接已关闭，如需开启取消下面注释
+# [params.editPost]
+# URL = "https://github.com/chainlinn/chainlinn.github.io/edit/master/content"
+# Text = "✏️ 提建议"
+# appendFilePath = true
+
+# ============================================
+# 导航菜单
+# ============================================
+[[menus.main]]
+name = "文章"
+url = "/posts/"
+weight = 1
+
+[[menus.main]]
+name = "归档"
+url = "/archives/"
+weight = 2
+
+[[menus.main]]
+name = "搜索"
+url = "/search/"
+weight = 3
+
+[[menus.main]]
+name = "标签"
+url = "/tags/"
+weight = 4
+
+# ============================================
+# 社交图标
+# ============================================
+[[params.socialIcons]]
+name = "github"
+url = "https://github.com/chainlinn"
+
+[[params.socialIcons]]
+name = "email"
+url = "mailto:santuchuan23@gmail.com"
+
+# ============================================
+# Markdown 渲染
+# ============================================
+[markup.highlight]
+noClasses = false
+
+[markup.goldmark.renderer]
+unsafe = true
