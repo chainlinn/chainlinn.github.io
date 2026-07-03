@@ -3,7 +3,6 @@ title: "转载｜如何优雅的给 Docker 配置网络代理"
 date: 2026-07-03T22:00:00+08:00
 draft: false
 tags: ["Docker", "网络", "代理"]
-categories: ["技术"]
 series: ["Docker 实践"]
 summary: "转载一篇关于 Docker 三种场景下代理配置的详细教程：Dockerd 代理、Container 代理、Docker Build 代理。"
 ---
