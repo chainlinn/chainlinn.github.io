@@ -65,8 +65,8 @@ mainSections = ["posts"]
 # 首页欢迎信息（Home-Info 模式）
 # ============================================
 [params.homeInfoParams]
-Title = "我正在留下些什么"
-Content = "欢迎来到 dev0 的博客"
+Title = "我试图留下些什么"
+Content = "![dev0](/dev0.gif)"
 
 # ============================================
 # 封面图
