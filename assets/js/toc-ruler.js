@@ -82,7 +82,10 @@
                 lastCardActiveId = newId;
                 if (newId) {
                     var active = card.querySelector('.hc-item[href="#' + newId + '"]');
-                    if (active) { active.classList.add('active'); }
+                    if (active) {
+                        active.classList.add('active');
+                        active.scrollIntoView({ block: 'nearest' });
+                    }
                 }
             }
         }
