@@ -65,8 +65,8 @@ mainSections = ["posts"]
 # 首页欢迎信息（Home-Info 模式）
 # ============================================
 [params.homeInfoParams]
-Title = "我试图留下些什么"
-Content = "![dev0](/dev0.gif)"
+Title = ""
+Content = "<h1>我试图留下些什么 <img src=\"/dev0.gif\" alt=\"dev0\" style=\"height: 1.2em; width: auto; vertical-align: middle; display: inline;\" /></h1>"
 
 # ============================================
 # 封面图
