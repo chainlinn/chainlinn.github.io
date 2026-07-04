@@ -1,2 +1,127 @@
 {{- $rulerJs := resources.Get "js/toc-ruler.js" | resources.Minify -}}
 <script src="{{ $rulerJs.RelPermalink }}" defer></script>
+<link rel="stylesheet" href="https://unpkg.com/cal-heatmap/dist/cal-heatmap.css">
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<script src="https://unpkg.com/cal-heatmap/dist/cal-heatmap.min.js"></script>
+<script src="https://unpkg.com/@popperjs/core@2"></script>
+<script src="https://unpkg.com/cal-heatmap/dist/plugins/Tooltip.min.js"></script>
+<script>
+(function() {
+    var el = document.getElementById('cal-heatmap');
+    if (!el) return;
+    var datesStr = el.getAttribute('data-dates');
+    if (!datesStr) return;
+    var startStr = el.getAttribute('data-start') || '2025-01-01';
+    var rangeStr = el.getAttribute('data-range') || '1';
+
+    var byDay = {};
+    var parts = datesStr.split(',');
+    parts.forEach(function(d) {
+        if (!d) return;
+        byDay[d] = (byDay[d] || 0) + 1;
+    });
+
+    var json = [];
+    Object.keys(byDay).forEach(function(d) {
+        json.push({ date: d, value: byDay[d] });
+    });
+
+    var cal = new CalHeatmap();
+
+    // Tooltip
+    var tooltipOpts = {
+        text: function(ts, val) {
+            var date = new Date(ts);
+            var dateStr = (date.getMonth() + 1) + '月' + date.getDate() + '日';
+            if (!val || val === 0) {
+                return dateStr + '\n这一天很安静';
+            }
+            return dateStr + '\n这一天留下 ' + val + ' 次痕迹';
+        }
+    };
+
+    // Year select
+    var startYear = new Date(startStr).getFullYear();
+    var numYears = parseInt(rangeStr);
+    var currentYear = new Date().getFullYear();
+
+    var select = document.createElement('select');
+    select.className = 'heatmap-year-select';
+    for (var y = startYear; y < startYear + numYears; y++) {
+        var opt = document.createElement('option');
+        opt.value = y;
+        opt.textContent = y;
+        if (y === currentYear) opt.selected = true;
+        select.appendChild(opt);
+    }
+
+    // Shared paint config
+    function getPaintConfig(year) {
+        return {
+            itemSelector: '#cal-heatmap',
+            data: { source: json, x: 'date', y: 'value' },
+            date: { start: new Date(year + '-01-01'), locale: { weekStart: 0 } },
+            range: 1,
+            domain: { type: 'year', gutter: 10, label: { text: null } },
+            subDomain: { type: 'day', width: 10, height: 10, radius: 2, gutter: 3 },
+            scale: {
+                color: {
+                    type: 'threshold',
+                    range: ['#ebedf0', 'rgb(64, 196, 99)', 'rgb(48, 161, 78)', 'rgb(33, 110, 57)'],
+                    domain: [0, 1, 2]
+                }
+            }
+        };
+    }
+
+    // Year stats
+    var statsSpan = document.createElement('span');
+    statsSpan.className = 'heatmap-stats';
+
+    function updateStats(year) {
+        var total = 0;
+        json.forEach(function(d) {
+            if (d.date.indexOf(year + '-') === 0) total += d.value;
+        });
+        statsSpan.textContent = '这一年留下了 ' + total + ' 次痕迹';
+    }
+    updateStats(currentYear);
+
+    select.addEventListener('change', function() {
+        var year = parseInt(this.value);
+        updateStats(year);
+        cal.paint(getPaintConfig(year), [[Tooltip, tooltipOpts]]);
+    });
+
+    // Legend row: Less [■][■][■][■] More
+    var legend = document.createElement('div');
+    legend.className = 'heatmap-legend-row';
+    var less = document.createElement('span');
+    less.textContent = 'Less';
+    less.className = 'heatmap-legend-label';
+    legend.appendChild(less);
+    var colors = ['#8b949e', 'rgb(64, 196, 99)', 'rgb(48, 161, 78)', 'rgb(33, 110, 57)'];
+    colors.forEach(function(c, idx) {
+        var box = document.createElement('span');
+        box.className = 'heatmap-legend-box';
+        if (idx === 0) { box.setAttribute('data-empty', ''); }
+        else { box.style.backgroundColor = c; }
+        legend.appendChild(box);
+    });
+    var more = document.createElement('span');
+    more.textContent = 'More';
+    more.className = 'heatmap-legend-label';
+    legend.appendChild(more);
+
+    var controlsRow = document.createElement('div');
+    controlsRow.className = 'heatmap-controls';
+    controlsRow.appendChild(select);
+    controlsRow.appendChild(statsSpan);
+    controlsRow.appendChild(legend);
+
+    el.parentNode.insertBefore(controlsRow, el.nextSibling);
+
+    // initial paint
+    cal.paint(getPaintConfig(currentYear), [[Tooltip, tooltipOpts]]);
+})();
+</script>

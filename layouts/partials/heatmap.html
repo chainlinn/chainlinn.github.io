@@ -1,0 +1,18 @@
+{{- /* 文章热力图 (cal-heatmap) */ -}}
+{{- $posts := where site.RegularPages "Type" "in" site.Params.mainSections -}}
+{{- $dates := slice -}}
+{{- range $posts -}}
+  {{- $dates = $dates | append (.Date.Format "2006-01-02") -}}
+{{- end -}}
+
+{{- $startYear := now.Year -}}
+{{- $endYear := now.Year -}}
+{{- range $posts -}}
+  {{- if lt .Date.Year $startYear }}{{ $startYear = .Date.Year }}{{ end -}}
+  {{- if gt .Date.Year $endYear }}{{ $endYear = .Date.Year }}{{ end -}}
+{{- end -}}
+
+{{- $startDate := printf "%d-01-01" $startYear -}}
+{{- $numYears := add (sub $endYear $startYear) 1 -}}
+
+<div id="cal-heatmap" data-dates="{{ delimit $dates "," }}" data-start="{{ $startDate }}" data-range="{{ $numYears }}"></div>

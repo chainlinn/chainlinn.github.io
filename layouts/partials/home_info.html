@@ -14,11 +14,46 @@
     var text = '{{ .Title }}';
     var el = document.getElementById('typewriter-text');
     var i = 0;
+    var forward = true;
+
     function type() {
-        if (i < text.length) {
-            el.textContent += text.charAt(i);
-            i++;
-            setTimeout(type, 100 + Math.random() * 80);
+        if (forward) {
+            if (i < text.length) {
+                el.textContent += text.charAt(i);
+                i++;
+                // Natural rhythm: mostly fast, occasional hesitation
+                var r = Math.random();
+                var delay;
+                if (r < 0.15) {
+                    delay = 400 + Math.random() * 800; // mid-thought pause
+                } else if (r < 0.30) {
+                    delay = 150 + Math.random() * 200; // slight hesitation
+                } else {
+                    delay = 60 + Math.random() * 100;  // normal speed
+                }
+                setTimeout(type, delay);
+            } else {
+                forward = false;
+                setTimeout(type, 3000);
+            }
+        } else {
+            if (i > 0) {
+                i--;
+                el.textContent = text.slice(0, i);
+                var r2 = Math.random();
+                var delDelay;
+                if (r2 < 0.12) {
+                    delDelay = 350 + Math.random() * 700;
+                } else if (r2 < 0.25) {
+                    delDelay = 120 + Math.random() * 200;
+                } else {
+                    delDelay = 30 + Math.random() * 50;
+                }
+                setTimeout(type, delDelay);
+            } else {
+                forward = true;
+                setTimeout(type, 1200);
+            }
         }
     }
     type();
@@ -31,6 +66,7 @@
     </div>
     <footer class="entry-footer">
         {{ partial "social_icons.html" (dict "align" site.Params.homeInfoParams.AlignSocialIconsTo) }}
+        {{- partial "heatmap.html" . }}
     </footer>
 </article>
 {{- end -}}
