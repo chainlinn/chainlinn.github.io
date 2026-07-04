@@ -48,6 +48,11 @@
       <li><a href="{{ .Permalink }}">{{ .LinkTitle }}</a></li>
       {{- end }}
     </ul>
+
+    <div class="post-copyright">
+      <span>&copy; {{ now.Year }} dev0 · <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank" rel="noopener noreferrer">CC BY-NC-SA 4.0</a></span>
+    </div>
+
     {{- if (.Param "ShowPostNavLinks") }}
     {{- partial "post_nav_links.html" . }}
     {{- end }}
@@ -55,10 +60,6 @@
     {{- partial "share_icons.html" . -}}
     {{- end }}
   </footer>
-
-  <div class="post-copyright">
-    <span>&copy; {{ now.Year }} dev0 · <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank" rel="noopener noreferrer">CC BY-NC-SA 4.0</a></span>
-  </div>
 
   {{- if (.Param "comments") }}
   {{- partial "comments.html" . }}
