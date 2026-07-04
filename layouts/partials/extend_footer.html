@@ -5,6 +5,7 @@
 <script src="https://unpkg.com/cal-heatmap/dist/cal-heatmap.min.js"></script>
 <script src="https://unpkg.com/@popperjs/core@2"></script>
 <script src="https://unpkg.com/cal-heatmap/dist/plugins/Tooltip.min.js"></script>
+<script src="https://unpkg.com/cal-heatmap/dist/plugins/CalendarLabel.min.js"></script>
 <script>
 (function() {
     var el = document.getElementById('cal-heatmap');
@@ -55,6 +56,15 @@
         select.appendChild(opt);
     }
 
+    // CalendarLabel: weekday labels on left (Mon, Wed, Fri)
+    var calendarLabelOpts = {
+        position: 'left',
+        text: function() { return ['', 'Mon', '', 'Wed', '', 'Fri', '']; },
+        textAlign: 'end',
+        width: 28,
+        padding: [0, 6, 0, 0]
+    };
+
     // Shared paint config
     function getPaintConfig(year) {
         return {
@@ -90,7 +100,7 @@
     select.addEventListener('change', function() {
         var year = parseInt(this.value);
         updateStats(year);
-        cal.paint(getPaintConfig(year), [[Tooltip, tooltipOpts]]);
+        cal.paint(getPaintConfig(year), [[Tooltip, tooltipOpts], [CalendarLabel, calendarLabelOpts]]);
     });
 
     // Legend row: Less [■][■][■][■] More
@@ -122,6 +132,6 @@
     el.parentNode.insertBefore(controlsRow, el.nextSibling);
 
     // initial paint
-    cal.paint(getPaintConfig(currentYear), [[Tooltip, tooltipOpts]]);
+    cal.paint(getPaintConfig(currentYear), [[Tooltip, tooltipOpts], [CalendarLabel, calendarLabelOpts]]);
 })();
 </script>

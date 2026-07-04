@@ -78,3 +78,7 @@
 
 [data-theme="dark"] #cal-heatmap .ch-subdomain-bg { fill: #161b22; }
 [data-theme="dark"] .ch-domain-text { fill: #8b949e; }
+
+/* CalendarLabel weekday text */
+.ch-plugin-calendar-label-text { fill: var(--secondary); font-size: 9px; }
+[data-theme="dark"] .ch-plugin-calendar-label-text { fill: #8b949e; }
