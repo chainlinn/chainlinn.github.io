@@ -130,22 +130,15 @@ val G_KTS = byteArrayOf(0xf0, 0xe5, 0x69, 0xae, ...)  // 128 字节，用于派�
 
 ### 加密流程（客户端 → 服务端）
 
-```
-payload = {"pick_code":"xxx"}    ① 构建 JSON
-  ↓
-XOR with RSA_KEY                 ② 逐字节异或 (4字节密钥)
-  ↓
-reverse bytes                    ③ 反转字节序
-  ↓
-XOR with G_KEY_L                 ④ 逐字节异或 (12字节密钥)
-  ↓
-prepend [0x00]*16                ⑤ 前面补 16 个零字节（充当 randKey）
-  ↓
-RSA-1024 encrypt (PKCS#1 v1.5)  ⑥ RSA 公钥加密，分块 117 字节
-  ↓
-Base64 encode                    ⑦ Base64 编码
-  ↓
-POST data=<base64>               ⑧ 表单提交
+```mermaid
+flowchart LR
+    A["① 构建 JSON"] --> B["② XOR with RSA_KEY (4B)"]
+    B --> C["③ reverse bytes"]
+    C --> D["④ XOR with G_KEY_L (12B)"]
+    D --> E["⑤ prepend randKey (16B 全零)"]
+    E --> F["⑥ RSA-1024 encrypt (PKCS#1 v1.5)"]
+    F --> G["⑦ Base64 encode"]
+    G --> H["⑧ POST data=&lt;base64&gt;"]
 ```
 
 对应代码：
@@ -194,22 +187,15 @@ fun rsaEncrypt(data: ByteArray): ByteArray {
 
 ### 解密流程（服务端响应 → 明文）
 
-```
-Base64 decode
-  ↓
-RSA-1024 decrypt (modPow with RSA_E, RSA_N)
-  ↓
-strip BigInt sign byte only        ① 仅去除第一个 0x00
-  ↓
-skip PKCS#1 padding                ② 跳过 [0x02]*[0x00]
-  ↓
-extract randKey[16], body          ③ 取前 16 字节作为 randKey
-  ↓
-keyL = gen_key(randKey, 12)        ④ 用 randKey 派生 12 字节 keyL
-  ↓
-body XOR keyL → reverse → XOR RSA_KEY  ⑤ 逆向还原
-  ↓
-{"url":"https://cdnfhnfile...?f=1"}   ⑥ 拿到 f=1 的 CDN URL
+```mermaid
+flowchart LR
+    A["Base64 decode"] --> B["RSA-1024 decrypt"]
+    B --> C["① strip BigInt sign byte"]
+    C --> D["② skip PKCS#1 padding"]
+    D --> E["③ extract randKey (16B) + body"]
+    E --> F["④ genKey(randKey, 12) → keyL"]
+    F --> G["⑤ body XOR keyL → reverse → XOR RSA_KEY"]
+    G --> H["⑥ CDN URL with f=1"]
 ```
 
 对应代码：
@@ -294,11 +280,13 @@ def xor(src, key):
 
 以 22 字节 payload `{"pick_code":"test123"}` 和 12 字节 key 为例：
 
-```
-Step 1: len=22, 22 % 4 = 2, 前 2 字节 XOR key[0:2]
-Step 2: 剩余 20 字节, 每 12 字节一组: 12+8
-        - bytes[2:14] XOR key[0:12]   ← 从 key[0] 重新开始!
-        - bytes[14:22] XOR key[0:8]   ← 又从 key[0] 重新开始!
+```mermaid
+flowchart TD
+    S["22 字节 payload, 12 字节 key"]
+    S --> A["Step 1: len=22, 22%4=2, 前 2 字节 XOR key[0:2]"]
+    A --> B["Step 2: 剩余 20 字节, 每 12 字节一组: 12+8"]
+    B --> C["bytes[2:14] XOR key[0:12] ← 从 key[0] 重新开始!"]
+    B --> D["bytes[14:22] XOR key[0:8] ← 又从 key[0] 重新开始!"]
 ```
 
 每轮分组的 key 索引都从 0 开始，不是连续递增的。我最初用 `i % keyLen` 循环，导致密钥偏移累积，整个加密结果错误。
