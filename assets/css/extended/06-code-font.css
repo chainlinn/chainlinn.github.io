@@ -1,0 +1,7 @@
+/* JetBrains Mono — Google Fonts import */
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap');
+
+/* 代码块字体 */
+code, pre, kbd, samp, .highlight, .chroma {
+    font-family: "JetBrains Mono", "Cascadia Code", "Fira Code", "Menlo", "Consolas", monospace;
+}
