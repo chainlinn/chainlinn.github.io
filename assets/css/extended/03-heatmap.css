@@ -82,3 +82,14 @@
 /* CalendarLabel weekday text */
 .ch-plugin-calendar-label-text { fill: var(--secondary); font-size: 9px; }
 [data-theme="dark"] .ch-plugin-calendar-label-text { fill: #8b949e; }
+
+/* Mermaid diagrams */
+.mermaid { text-align: center; margin: 16px 0; }
+[data-theme="dark"] .mermaid .flowchart-link,
+[data-theme="dark"] .mermaid .messageLine0,
+[data-theme="dark"] .mermaid .messageLine1,
+[data-theme="dark"] .mermaid .actor-line { stroke: #8b949e !important; }
+[data-theme="dark"] .mermaid .messageText,
+[data-theme="dark"] .mermaid .actor { fill: #e6edf3 !important; }
+[data-theme="dark"] .mermaid .labelBox { fill: #161b22 !important; stroke: #30363d !important; }
+[data-theme="dark"] .mermaid .labelText { fill: #e6edf3 !important; }
