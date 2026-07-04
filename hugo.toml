@@ -40,12 +40,6 @@ description = "技术博客与思考"
 author = "dev0"
 defaultTheme = "auto"
 
-# Favicon（显式 HTTPS 绝对路径，避免 absURL 在旧缓存中产生 http://）
-[params.assets]
-favicon = "https://devs0.com/favicon.ico"
-favicon16x16 = "https://devs0.com/favicon-16x16.png"
-favicon32x32 = "https://devs0.com/favicon-32x32.png"
-
 # 显示开关
 ShowReadingTime = true
 ShowPostNavLinks = true
@@ -66,6 +60,12 @@ ShareButtons = ["x", "linkedin", "telegram"]
 
 # 主要内容区（归档页会聚合这些 Section）
 mainSections = ["posts"]
+
+# Favicon（显式 HTTPS 绝对路径，避免 absURL 在旧缓存中产生 http://）
+[params.assets]
+favicon = "https://devs0.com/favicon.ico"
+favicon16x16 = "https://devs0.com/favicon-16x16.png"
+favicon32x32 = "https://devs0.com/favicon-32x32.png"
 
 # ============================================
 # 首页欢迎信息（Home-Info 模式）
