@@ -1,7 +1,7 @@
 ---
-title: "声音引用测试"
+title: "评论引用测试"
 date: 2026-07-05T00:00:00+08:00
-draft: true
+draft: false
 ---
 
 ## 基础用法

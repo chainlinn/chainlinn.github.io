@@ -10,10 +10,39 @@
           data-reactions-enabled="1"
           data-emit-metadata="0"
           data-input-position="bottom"
-          data-theme="preferred_color_scheme"
+          data-theme="light"
           data-lang="zh-CN"
           crossorigin="anonymous"
           async>
+  </script>
+  <script>
+  (function() {
+    function getGiscusTheme() {
+      var t = document.documentElement.dataset.theme;
+      if (t === 'dark') return 'noborder_dark';
+      if (t === 'auto') return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'noborder_dark' : 'noborder_light';
+      return 'noborder_light';
+    }
+
+    function sendTheme() {
+      var iframe = document.querySelector('.giscus-frame');
+      if (!iframe) return;
+      iframe.contentWindow.postMessage({ giscus: { setConfig: { theme: getGiscusTheme() } } }, 'https://giscus.app');
+    }
+
+    // Watch theme toggle
+    var observer = new MutationObserver(function() { sendTheme(); });
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+
+    // Watch system pref changes (for auto mode)
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function() { sendTheme(); });
+
+    // Send on load
+    window.addEventListener('message', function(e) {
+      if (e.origin !== 'https://giscus.app' || !e.data || !e.data.giscus) return;
+      sendTheme();
+    });
+  })();
   </script>
 </div>
 {{- end }}
