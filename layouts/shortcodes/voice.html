@@ -1,0 +1,15 @@
+<blockquote class="voice-quote">
+  <div class="voice-header">
+    <img class="voice-avatar" src="{{ .Get "avatar" | default "/santu-avatar.jpg" }}" alt="{{ .Get "name" }}" width="40" height="40">
+    <div class="voice-content">
+      <div class="voice-meta">
+        <span class="voice-name">{{ .Get "name" }}</span>
+        {{- with .Get "handle" }}<span class="voice-handle">{{ . }}</span>{{ end }}
+        {{- with .Get "date" }}<span class="voice-date">{{ . }}</span>{{ end }}
+      </div>
+      <div class="voice-body">
+        {{ .Inner | markdownify }}
+      </div>
+    </div>
+  </div>
+</blockquote>

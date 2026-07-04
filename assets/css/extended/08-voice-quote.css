@@ -1,0 +1,58 @@
+/* Voice quote — Twitter-style blockquote */
+
+.md-content .voice-quote {
+    quotes: none;
+    border: 1px solid var(--border);
+    border-inline-start: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 12px 16px;
+}
+
+.md-content .voice-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    object-fit: cover;
+    margin: 0 8px 0 0;
+    flex-shrink: 0;
+}
+
+.voice-header {
+    display: flex;
+    align-items: flex-start;
+    margin: 0;
+    padding: 0;
+}
+
+.voice-content {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin: 0;
+    padding: 0;
+}
+
+.voice-meta {
+    display: flex;
+    align-items: baseline;
+    flex-wrap: nowrap;
+    gap: 8px;
+}
+
+.voice-name {
+    font-weight: 700;
+    color: var(--primary);
+    font-size: 15px;
+}
+
+.voice-handle,
+.voice-date {
+    color: var(--secondary);
+    font-size: 14px;
+}
+
+.voice-body {
+    color: var(--content);
+    font-size: 15px;
+    line-height: 1.6;
+}
