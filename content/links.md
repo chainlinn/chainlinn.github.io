@@ -17,4 +17,17 @@ description: "优质站点收藏"
 
 ## 后端
 
+{{< card "https://javabetter.cn/" >}}
+
+{{< card "https://javaguide.cn/" >}}
+
 {{< card "https://www.xiaolincoding.com/" >}}
+
+## 算法
+
+{{< card "https://programmercarl.com/" >}}
+
+{{< card "https://labuladong.online/zh/" >}}
+## 工具
+
+{{< card url="https://builder.elegantresume.pro/" title="ElegantResume Builder" desc="在线简历生成器" >}}
