@@ -11,6 +11,19 @@
     --content: #37352f;
 }
 
+/* 文章版权声明 */
+.post-copyright {
+    margin-top: 12px;
+    font-size: 0.78rem;
+    color: var(--secondary);
+    text-align: center;
+}
+.post-copyright a {
+    color: var(--secondary);
+    text-decoration: underline;
+    text-underline-offset: 0.2rem;
+}
+
 /* 暗色 — GitHub Dark */
 :root[data-theme="dark"] {
     --primary: #e6edf3;

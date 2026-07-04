@@ -56,6 +56,12 @@
     {{- end }}
   </footer>
 
+  <div class="post-copyright">
+    <span>&copy; {{ now.Year }} dev0</span>
+    <span>·</span>
+    <span>本文采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank" rel="noopener noreferrer">CC BY-NC-SA 4.0</a> 许可协议</span>
+  </div>
+
   {{- if (.Param "comments") }}
   {{- partial "comments.html" . }}
   {{- end }}
