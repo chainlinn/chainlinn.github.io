@@ -1,0 +1,31 @@
+{{- /* Pills wrapper */}}
+<span class="author-pills">
+{{- /* Author pill */}}
+{{- with site.Params.authorBadge }}
+  <span class="author-pill">
+    <img class="author-pill-avatar" src="{{ .avatar }}" alt="{{ .name }}" width="20" height="20">
+    <span>{{ .name }}</span>
+  </span>
+{{- end }}
+
+{{- /* AI co-author pill — only when front matter aiCoAuthor is true */}}
+{{- if .Params.aiCoAuthor }}
+  {{- with site.Params.aiBadge }}
+    <span class="author-pill ai-pill">
+      <svg class="ai-avatar-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 11 11" shape-rendering="crispEdges" width="16" height="16">
+        <rect width="11" height="11" fill="transparent"/>
+        <path class="ai-body" fill-rule="evenodd" d="
+          M1 2 h9 v3 h1 v1 h-1 v2 h-9 v-2 h-1 v-1 h1 v-3 z
+          M2 3 h1 v2 h-1 v-2 z
+          M8 3 h1 v2 h-1 v-2 z
+          M2 8 h1 v2 h-1 v-2 z
+          M4 8 h1 v2 h-1 v-2 z
+          M6 8 h1 v2 h-1 v-2 z
+          M8 8 h1 v2 h-1 v-2 z
+        "/>
+      </svg>
+      <span>{{ .name }}</span>
+    </span>
+  {{- end }}
+{{- end }}
+</span>

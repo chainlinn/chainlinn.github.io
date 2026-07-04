@@ -4,6 +4,7 @@ date: 2026-07-04T21:00:00+08:00
 draft: false
 tags: ["逆向工程", "RSA", "CDN", "防盗链", "Kotlin", "115网盘"]
 series: ["TuneForge"]
+aiCoAuthor: true
 summary: "逆向 115 网盘 proapi RSA 加密协议，CDN 防盗链 f=3 降至 f=1，浏览器 302 直链零带宽播放。XOR/randKey/RSA sign byte 等坑点实录。"
 ---
 

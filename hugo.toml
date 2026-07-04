@@ -37,7 +37,7 @@ lastmod = [':git']
 [params]
 env = "production"
 description = "技术博客与思考"
-author = "dev0"
+author = "santu"
 defaultTheme = "auto"
 
 # 显示开关
@@ -60,6 +60,15 @@ ShareButtons = ["x", "linkedin", "telegram"]
 
 # 主要内容区（归档页会聚合这些 Section）
 mainSections = ["posts"]
+
+# 作者 & AI 共创者药丸配置
+[params.authorBadge]
+avatar = "/santu-avatar.jpg"
+name = "santu"
+
+[params.aiBadge]
+avatar = "/ai-avatar.svg"
+name = "Claude"
 
 # Favicon（显式 HTTPS 绝对路径，避免 absURL 在旧缓存中产生 http://）
 [params.assets]

@@ -1,0 +1,58 @@
+/* Author & AI co-author pills — Apple-style minimal */
+.author-pills {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    vertical-align: middle;
+}
+
+.author-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 20px 4px 5px;
+    border-radius: 999px;
+    background: rgba(128, 128, 128, 0.07);
+    border: 0.5px solid rgba(128, 128, 128, 0.06);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04), 0 2px 8px rgba(0, 0, 0, 0.02);
+    font-size: 12px;
+    letter-spacing: 0.5px;
+    line-height: 1.5;
+    color: var(--primary);
+    white-space: nowrap;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    transition: background 0.2s, box-shadow 0.2s;
+}
+
+.author-pill:hover {
+    background: rgba(128, 128, 128, 0.12);
+    box-shadow: 0 1px 6px rgba(0, 0, 0, 0.06), 0 3px 12px rgba(0, 0, 0, 0.03);
+}
+
+.author-pill-avatar {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    object-fit: cover;
+    flex-shrink: 0;
+    box-shadow: 0 0 0 1.5px rgba(255, 255, 255, 0.6),
+                0 0 0 2px rgba(255, 255, 255, 0.2);
+}
+
+.ai-pill {
+    padding: 4px 20px 4px 5px;
+}
+
+.ai-avatar-svg {
+    flex-shrink: 0;
+}
+
+/* AI avatar — light mode: black, dark mode: warm orange */
+.ai-body { fill: #1e1e1e; }
+[data-theme="dark"] .ai-body { fill: rgb(217, 119, 87); }
+
+/* auto mode — respect OS preference */
+@media (prefers-color-scheme: dark) {
+    [data-theme="auto"] .ai-body { fill: rgb(217, 119, 87); }
+}
