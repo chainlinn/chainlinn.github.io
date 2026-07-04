@@ -15,7 +15,7 @@ summary: "逆向 115 网盘 proapi RSA 加密协议，CDN 防盗链 f=3 降至 f
 
 理想的数据流是这样的：
 
-![302 直链理想数据流](/post/115-cdn-302-redirect-play-1.png)
+![302 直链理想数据流](/post/115-cdn-302-redirect-play-1.svg)
 
 服务端只负责"告诉浏览器去哪里拿"，实际音频数据从 CDN 直通浏览器——零服务器带宽。
 
@@ -70,7 +70,7 @@ proapi 接口不是随便调的——请求体需要 RSA-1024 加密，响应也
 
 最终的 302 直链流程：
 
-![整体架构流程图](/post/115-cdn-302-redirect-play-2.png)
+![整体架构流程图](/post/115-cdn-302-redirect-play-2.svg)
 
 关键点：
 
@@ -101,7 +101,7 @@ val G_KTS = byteArrayOf(0xf0, 0xe5, 0x69, 0xae, ...)  // 128 字节，用于派�
 
 ### 加密流程（客户端 → 服务端）
 
-![RSA 加密流程](/post/115-cdn-302-redirect-play-3.png)
+![RSA 加密流程](/post/115-cdn-302-redirect-play-3.svg)
 
 对应代码：
 
@@ -149,7 +149,7 @@ fun rsaEncrypt(data: ByteArray): ByteArray {
 
 ### 解密流程（服务端响应 → 明文）
 
-![RSA 解密流程](/post/115-cdn-302-redirect-play-4.png)
+![RSA 解密流程](/post/115-cdn-302-redirect-play-4.svg)
 
 对应代码：
 
@@ -233,7 +233,7 @@ def xor(src, key):
 
 以 22 字节 payload `{"pick_code":"test123"}` 和 12 字节 key 为例：
 
-![XOR chunk-aligned 分段逻辑](/post/115-cdn-302-redirect-play-5.png)
+![XOR chunk-aligned 分段逻辑](/post/115-cdn-302-redirect-play-5.svg)
 
 每轮分组的 key 索引都从 0 开始，不是连续递增的。我最初用 `i % keyLen` 循环，导致密钥偏移累积，整个加密结果错误。
 

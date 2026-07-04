@@ -1,0 +1,5 @@
+/* Excalidraw SVG 暗色模式适配 */
+[data-theme="dark"] article img[src*="/post/"] {
+    filter: invert(0.9) hue-rotate(180deg);
+    background: transparent;
+}
