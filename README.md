@@ -34,7 +34,7 @@ chainlinn.github.io/
 
 文中引用方式：
 ```markdown
-![图片描述](/static/post/115-cdn-302-redirect-play-1.png)
+![图片描述](/post/115-cdn-302-redirect-play-1.png)
 ```
 
 ## 本地开发
