@@ -15,19 +15,7 @@ summary: "逆向 115 网盘 proapi RSA 加密协议，CDN 防盗链 f=3 降至 f
 
 理想的数据流是这样的：
 
-```mermaid
-sequenceDiagram
-    participant B as 浏览器
-    participant T as TuneForge 服务器
-    participant C as 115 CDN
-
-    B->>T: GET /api/music/play/123
-    T->>C: 获取 CDN 下载链接
-    C-->>T: CDN URL
-    T-->>B: 302 Location: CDN URL
-    B->>C: GET CDN URL?f=1
-    C-->>B: 206 Partial Content (FLAC stream)
-```
+![302 直链理想数据流](/static/post/115-cdn-302-redirect-play-1.png)
 
 服务端只负责"告诉浏览器去哪里拿"，实际音频数据从 CDN 直通浏览器——零服务器带宽。
 
@@ -82,24 +70,7 @@ proapi 接口不是随便调的——请求体需要 RSA-1024 加密，响应也
 
 最终的 302 直链流程：
 
-```mermaid
-flowchart TD
-    A["浏览器 &lt;audio src='/api/music/play/{id}'&gt;"] --> B["MusicController.play()"]
-    B --> C["从数据库查出 pickCode"]
-    C --> D["透传 request.getHeader('User-Agent')"]
-    D --> E["P115Client.downloadUrl()"]
-    E --> F{"缓存命中?"}
-    F -->|是| G["返回缓存 CDN URL"]
-    F -->|否| H["downloadUrlF1() 调 proapi"]
-    H --> I["RSA 加密 payload"]
-    I --> J["POST proapi.115.com/android/2.0/ufile/download"]
-    J --> K["RSA 解密响应 → CDN URL with f=1"]
-    G --> L["设置 Referrer-Policy: no-referrer"]
-    K --> L
-    L --> M["302 sendRedirect(cdnUrl)"]
-    M --> N["浏览器跟随 302 → GET cdn.115.com/xxx?f=1"]
-    N --> O["CDN 校验 UA 匹配 → 206 stream"]
-```
+![整体架构流程图](/static/post/115-cdn-302-redirect-play-2.png)
 
 关键点：
 
@@ -130,16 +101,7 @@ val G_KTS = byteArrayOf(0xf0, 0xe5, 0x69, 0xae, ...)  // 128 字节，用于派�
 
 ### 加密流程（客户端 → 服务端）
 
-```mermaid
-flowchart LR
-    A["① 构建 JSON"] --> B["② XOR with RSA_KEY (4B)"]
-    B --> C["③ reverse bytes"]
-    C --> D["④ XOR with G_KEY_L (12B)"]
-    D --> E["⑤ prepend randKey (16B 全零)"]
-    E --> F["⑥ RSA-1024 encrypt (PKCS#1 v1.5)"]
-    F --> G["⑦ Base64 encode"]
-    G --> H["⑧ POST data=&lt;base64&gt;"]
-```
+![RSA 加密流程](/static/post/115-cdn-302-redirect-play-3.png)
 
 对应代码：
 
@@ -187,16 +149,7 @@ fun rsaEncrypt(data: ByteArray): ByteArray {
 
 ### 解密流程（服务端响应 → 明文）
 
-```mermaid
-flowchart LR
-    A["Base64 decode"] --> B["RSA-1024 decrypt"]
-    B --> C["① strip BigInt sign byte"]
-    C --> D["② skip PKCS#1 padding"]
-    D --> E["③ extract randKey (16B) + body"]
-    E --> F["④ genKey(randKey, 12) → keyL"]
-    F --> G["⑤ body XOR keyL → reverse → XOR RSA_KEY"]
-    G --> H["⑥ CDN URL with f=1"]
-```
+![RSA 解密流程](/static/post/115-cdn-302-redirect-play-4.png)
 
 对应代码：
 
@@ -280,14 +233,7 @@ def xor(src, key):
 
 以 22 字节 payload `{"pick_code":"test123"}` 和 12 字节 key 为例：
 
-```mermaid
-flowchart TD
-    S["22 字节 payload, 12 字节 key"]
-    S --> A["Step 1: len=22, 22%4=2, 前 2 字节 XOR key[0:2]"]
-    A --> B["Step 2: 剩余 20 字节, 每 12 字节一组: 12+8"]
-    B --> C["bytes[2:14] XOR key[0:12] ← 从 key[0] 重新开始!"]
-    B --> D["bytes[14:22] XOR key[0:8] ← 又从 key[0] 重新开始!"]
-```
+![XOR chunk-aligned 分段逻辑](/static/post/115-cdn-302-redirect-play-5.png)
 
 每轮分组的 key 索引都从 0 开始，不是连续递增的。我最初用 `i % keyLen` 循环，导致密钥偏移累积，整个加密结果错误。
 
