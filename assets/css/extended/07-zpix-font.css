@@ -1,8 +1,55 @@
-/* Zpix 像素字体 — self-hosted woff2，按需指定使用 */
+/* Zpix 像素字体 — self-hosted woff2 */
 @font-face {
     font-family: "Zpix";
     src: url("/fonts/zpix.woff2") format("woff2");
     font-weight: 400;
     font-style: normal;
     font-display: swap;
+}
+
+/* Logo + 导航菜单 */
+.logo a,
+.menu a,
+.footer span,
+.footer a {
+    font-family: "Zpix", sans-serif;
+    letter-spacing: 1px;
+}
+
+/* 首页标题 "我试图留下些什么" + 副标题文字 + 首页文章列表标题 + 描述 + 页脚meta */
+.home-info h1,
+.home-info .entry-content,
+.post-entry .entry-hint-parent,
+.post-entry .entry-content,
+.post-entry .entry-footer {
+    font-family: "Zpix", sans-serif;
+}
+
+/* links 页（网站收录 + 优质站点收藏）+ 搜索页输入框 + 分区页标题 + 面包屑 */
+.layout-page .post-title,
+.layout-page .post-description,
+.page-header h1,
+.breadcrumbs,
+#searchInput {
+    font-family: "Zpix", sans-serif;
+}
+
+/* 热力图 tooltip */
+.ch-tooltip {
+    font-family: "Zpix", sans-serif;
+    font-size: 12px;
+    line-height: 1.8;
+}
+
+/* "这一年留下了 n 次痕迹" + Less/More legend */
+.heatmap-stats,
+.heatmap-legend-label {
+    font-family: "Zpix", sans-serif;
+    font-size: 12px;
+}
+
+/* 热力图左侧周标签 Mon/Wed/Fri (SVG text) */
+#cal-heatmap text {
+    font-family: "Zpix", sans-serif;
+    font-size: 10px;
 }
