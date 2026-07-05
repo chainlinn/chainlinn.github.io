@@ -3,6 +3,7 @@ title: "Changelog · v1.0：dev0 体验增强"
 date: 2026-07-05T00:00:00+08:00
 draft: false
 tags: ["changelog"]
+series: ["博客优化"]
 summary: "声音引用 shortcode、外链卡片、JetBrains Mono 代码字体、Zpix 像素字体、Giscus 评论系统......"
 ---
 
