@@ -36,7 +36,7 @@ lastmod = [':git']
 # ============================================
 [params]
 env = "production"
-description = "技术博客与思考"
+description = "在安静的时间里，记录一些存在的痕迹"
 author = "santu"
 defaultTheme = "auto"
 
