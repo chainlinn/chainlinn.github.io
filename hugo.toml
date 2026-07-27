@@ -1,7 +1,7 @@
 # ============================================
 # 基础信息
 # ============================================
-baseURL = 'https://devs0.com/'
+baseURL = 'https://devx0.com/'
 locale = 'zh-cn'
 title = 'dev0'
 theme = 'PaperMod'
@@ -72,9 +72,9 @@ name = "Claude"
 
 # Favicon（显式 HTTPS 绝对路径，避免 absURL 在旧缓存中产生 http://）
 [params.assets]
-favicon = "https://devs0.com/favicon.ico"
-favicon16x16 = "https://devs0.com/favicon-16x16.png"
-favicon32x32 = "https://devs0.com/favicon-32x32.png"
+favicon = "https://devx0.com/favicon.ico"
+favicon16x16 = "https://devx0.com/favicon-16x16.png"
+favicon32x32 = "https://devx0.com/favicon-32x32.png"
 
 # ============================================
 # 首页欢迎信息（Home-Info 模式）

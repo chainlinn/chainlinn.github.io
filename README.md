@@ -1,6 +1,6 @@
 # dev0's Blog
 
-[devs0.com](https://devs0.com/) — 技术博客，基于 [Hugo](https://gohugo.io/) + [PaperMod](https://github.com/adityatelange/hugo-PaperMod) 主题。
+[devx0.com](https://devx0.com/) — 技术博客，基于 [Hugo](https://gohugo.io/) + [PaperMod](https://github.com/adityatelange/hugo-PaperMod) 主题。
 
 ## 项目结构
 
