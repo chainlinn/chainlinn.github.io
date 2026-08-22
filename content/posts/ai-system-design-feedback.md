@@ -4,7 +4,7 @@ date: 2026-08-22T00:00:00+08:00
 draft: false
 tags: ["LLM", "Agent", "系统设计", "翻转驱动", "确定性"]
 series: ["Agent"]
-aiCoAuthor: false
+aiCoAuthor: true
 summary: "从 208 张财务报表标注的实战出发：把 LLM 的翻转从噪声变成信号，用确定性引擎重放度量行为差异，把可证明的决策从模型收回代码——AI 系统设计如何从执行走向反馈。"
 ---
 
