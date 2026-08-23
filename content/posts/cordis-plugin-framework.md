@@ -13,9 +13,13 @@ summary: "构建 agent 运行时 SDK 时，我选了 Cordis 作为内核。它�
 
 这篇文章拆解它：ctx、apply、effect、事件分发、inject、配置。每个机制都配真实代码——来自我落地 agent 运行时时的实践。
 
+如果你是从前端过来的（Vue/React/Redux），这篇文章的暗线是：**Cordis 的抽象不是新东西，是前端已有抽象在插件框架里的重组**。每个机制我都会给出前端的参照系——你会发现，学会 Cordis 的过程，其实是把熟悉的东西换个环境重新认一遍。
+
 ## 1. ctx 是主板，插件是部件
 
 Cordis 的核心抽象是一个 `Context`。忘掉"上下文"这个翻译——**ctx 是主板**：所有插件共享的注册表、事件总线、生命周期容器。
+
+前端参照：它像 **EventBus + 全局 store + provide/inject 的合体**——所有插件共享同一个"环境"，往上面注册东西、从上面取东西。
 
 插件就是插到主板上的部件。最朴素的插件是一个函数：
 
@@ -52,6 +56,8 @@ export class MyService extends Service {
 
 第三种形态很关键：**类插件在 ctx 上注册一个服务**——别的插件可以通过 `ctx.myService` 使用它。这是插件间通信的主通道。
 
+前端参照：类插件 ≈ Vue 的 **provide**——把服务"提供"到公共环境，谁需要谁注入。
+
 ## 2. effect：可逆注册
 
 插件会注册很多东西：事件监听、定时器、服务、资源。注册了就该能注销——Cordis 用 `ctx.effect()` 统一解决：
@@ -67,6 +73,8 @@ export function apply(ctx: Context) {
 ```
 
 每个插件的生命周期是明确的（PENDING → LOADING → ACTIVE → UNLOADING → DISPOSED），卸载时**所有 effect 的回调逆序执行**——注册的监听、资源、服务全部自动撤销。
+
+前端参照：`effect()` 就是一个 **mini 版 Vue 生命周期 hook**——`onMounted` 里注册、`onUnmounted` 里清理，被压缩成一个函数：注册即声明清理，卸载由框架统一触发。Vue 组合式 API 的用户会对这个心智模型感到非常熟悉。
 
 这意味着插件开发者的心智负担大幅降低：**注册时声明清理逻辑，卸载的事框架管**。我们的工具注册就是这么写的：
 
@@ -94,6 +102,8 @@ Cordis 的事件系统不是简单的发布订阅——它提供**五种分发�
 | `waterfall` | **瀑布——每个监听者可以改写结果或拦截** | 管线/中间件（审批、鉴权、变换） |
 
 对 agent 运行时，`waterfall` 是最重要的一个。它是中间件语义：监听者收到参数，可以选择直接返回（短路）或调用 `next()` 委托给下一个：
+
+前端参照：这不是新概念——**Koa 中间件、Express 的 next()、axios 拦截器、webpack loader** 全是这个模式。前端写过后端中间件的人，看到 `next()` 的那一刻就懂了 waterfall 的全部语义：每个监听者是一层洋葱，`next()` 是剥到下一层。
 
 ```ts
 ctx.on('tools/pre-execute', async (exec, next) => {
@@ -139,6 +149,8 @@ await ctx.inject(['llm'], async (injectCtx) => {
 
 这个坑的真实教训是：**inject 不是声明"我想要"，是声明"我必须在这个通道里拿"**——它把依赖关系变成了显式的激活约束，而不是运行时碰运气。声明式配置（cordis.yml）会自动处理这条通道，编程式装配必须显式走 `ctx.inject`。
 
+前端参照：`inject` 这个名字就是 **Vue 的 provide/inject**——但它比 Vue 严格：Vue 的 inject 没找到依赖时只是警告，Cordis 的 inject 没走对通道直接报错。**依赖关系从"约定"升级成了"约束"**——这正是插件框架需要的严谨度。
+
 ## 5. 配置：Schema 校验，错配 fail loud
 
 每个插件可以声明自己的配置 schema，装配时统一校验：
@@ -180,6 +192,21 @@ dsh-llm（Service Definition）       dsh-llm-pi-ai（Provider）
 `dsh-llm` 是插座——定义 `ctx.llm` 服务、调用协议、适配器注册表。`dsh-llm-pi-ai` 是插上去的适配器——注册 deepseek 路由。`loop`（循环）是消费者——只依赖插座，不知道底下是哪个 Provider。
 
 **换模型供应商 = 换一个 Provider 插件**，seam 和 loop 一行不用改。这就是插件架构给 agent 运行时的承诺：能力可替换，解耦到协议层。
+
+## 前端的迁移地图
+
+把全文的参照系收拢成一张表：
+
+| 前端已有抽象 | Cordis 的对应 | 差异点 |
+|---|---|---|
+| Vue `onMounted`/`onUnmounted` | `effect()` | 注册与清理压缩成一个函数，卸载统一触发 |
+| Koa 中间件 / axios 拦截器 / webpack loader | `waterfall` 事件 | 语义完全一致：`next()` 委托、短路即返回 |
+| Vue provide/inject | `inject` 通道 | 更严格：依赖缺失从"警告"升级为"报错" |
+| EventBus + 全局 store | `ctx` | 加上了服务注册表与生命周期容器 |
+| Vue provide（服务） | 类插件（Service） | 服务注册进公共环境，谁需要谁注入 |
+| Redux action log + reducer | 事件溯源（会话日志 + 投影） | 见上篇《Agent 记忆的正确形态》 |
+
+迁移思想的核心一句话：**Cordis 没有发明新抽象，它把前端已经熟悉的心智模型（生命周期、中间件、依赖注入、事件总线）重组进了"一切皆插件"的框架里**——学它不需要空杯，只需要认出来。
 
 ## 结论
 
